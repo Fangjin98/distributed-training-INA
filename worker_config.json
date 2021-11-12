@@ -17,12 +17,6 @@
       "user_name": "edge2",
       "computation": 5,
       "dynamics": 3
-    },
-    {
-      "ip_address": "127.0.0.1",
-      "user_name": "edge3",
-      "computation": 6,
-      "dynamics": 4
     }
   ]
 }

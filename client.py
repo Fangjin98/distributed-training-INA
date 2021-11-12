@@ -1,14 +1,15 @@
 import argparse
 
-import numpy as np
 import torch
 import torch.optim as optim
 from pulp import *
 from torch.utils.tensorboard import SummaryWriter
+from threading import Thread
 
 from config import ClientConfig
 from utils import models, datasets
 from utils.comm_utils import *
+from utils.file_utils import write_tensor_to_file
 from utils.training_utils import train, test
 
 parser = argparse.ArgumentParser(description='Distributed Client')
@@ -44,16 +45,21 @@ else:
 device = torch.device("cuda" if args.use_cuda and torch.cuda.is_available() else "cpu")
 
 
+def write_tensor(filename, tensor):
+    t = Thread(target=write_tensor_to_file, args=(filename, tensor))
+    t.start()
+
+
 def main():
-    client_config = ClientConfig( )
+    client_config = ClientConfig()
     recorder = SummaryWriter("log_" + str(client_config.idx))
     # receive config
-    print(str(args.master_ip),str(args.master_port))
+    print(str(args.master_ip), str(args.master_port))
     master_socket = connect_get_socket(args.master_ip, args.master_port)
     config_received = get_data_socket(master_socket)
-    
+
     print(config_received)
-    
+
     for k, v in config_received.__dict__.items():
         setattr(client_config, k, v)
     computation = client_config.custom["computation"]
@@ -66,7 +72,8 @@ def main():
         print(arg, ":", getattr(args, arg))
 
     print('Create local model.')
-    local_model = models.create_model_instance(args.dataset, args.model)
+
+    local_model = models.get_model(args.model)
     # local_model.load_state_dict(client_config.para)
     torch.nn.utils.vector_to_parameters(client_config.para, local_model.parameters())
     local_model.to(device)
@@ -100,11 +107,12 @@ def main():
         train_loss = train(local_model, train_loader, optimizer, local_iters=local_steps, device=device,
                            model_type=args.model)
         local_para = torch.nn.utils.parameters_to_vector(local_model.parameters()).clone().detach()
+
+        write_tensor("data/log/epoch_{}_worker_{}".format(epoch, args.idx), local_para)
         train_time = time.time() - start_time
         train_time = train_time / local_steps
         print("train time: ", train_time)
         print(train_time / computation)
-
         test_loss, acc = test(local_model, test_loader, device, model_type=args.model)
         recorder.add_scalar('acc_worker-' + str(args.idx), acc, epoch)
         recorder.add_scalar('test_loss_worker-' + str(args.idx), test_loss, epoch)
@@ -113,10 +121,6 @@ def main():
                                                                                                       test_loss, acc))
         print("send para")
         compressed_paras = local_para
-        # with open('data/paraof' + str(client_config.idx) + '_epoch' + str(epoch), 'w') as f:
-        #     for d in compressed_paras.data:
-        #         f.write(str(float(d)))
-        #         f.write('\n')
         start_time = time.time()
         send_data_socket(compressed_paras, master_socket)
         send_time = time.time() - start_time
@@ -126,7 +130,7 @@ def main():
         # send_data_socket((train_time, send_time), master_socket)
         print("get begin")
         local_para = get_data_socket(master_socket)
-        print("get")
+        print("get end")
         local_para.to(device)
         torch.nn.utils.vector_to_parameters(local_para, local_model.parameters())
 

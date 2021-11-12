@@ -1,9 +1,10 @@
+import os
 import random
 import numpy as np
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
-FILE_PATH = 'data/datasets'
+CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
 
 
 class Partition(object):
@@ -108,7 +109,7 @@ def create_dataloaders(dataset, batch_size, selected_idxs=None, shuffle=True, pi
     return DataLoaderHelper(dataloader)
 
 
-def load_datasets(dataset_type, data_path=FILE_PATH):
+def load_datasets(dataset_type, data_path=CURRENT_PATH+'/../data/datasets'):
     train_transform = load_default_transform(dataset_type, train=True)
     test_transform = load_default_transform(dataset_type, train=False)
     train_dataset = None
@@ -178,35 +179,3 @@ def load_default_transform(dataset_type, train=False):
 
     return dataset_transform
 
-
-def load_customized_transform(dataset_type):
-    if dataset_type == 'CIFAR10':
-        normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
-                                         std=[0.2023, 0.1994, 0.2010])
-        dataset_transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, 4),
-            transforms.ToTensor(),
-            normalize
-        ])
-
-    elif dataset_type == 'CIFAR100':
-        dataset_transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(1.0),
-            transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-        ])
-
-    elif dataset_type == 'FashionMNIST':
-        dataset_transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(1.0),
-            transforms.ToTensor()
-        ])
-
-    elif dataset_type == 'MNIST':
-        dataset_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ])
-
-    return dataset_transform

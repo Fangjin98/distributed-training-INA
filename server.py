@@ -12,7 +12,7 @@ from utils.training_utils import test
 
 # init parameters
 parser = argparse.ArgumentParser(description='Distributed Client')
-parser.add_argument('--model', type=str, default='VGG16')
+parser.add_argument('--model', type=str, default='resnet50')
 parser.add_argument('--batch_size', type=int, default=32)
 parser.add_argument('--data_pattern', type=int, default=0)
 parser.add_argument('--weight_decay', type=float, default=0.0)
@@ -23,7 +23,7 @@ parser.add_argument('--ratio', type=float, default=1.0)
 parser.add_argument('--lr', type=float, default=0.1)
 parser.add_argument('--step_size', type=float, default=1.0)
 parser.add_argument('--decay_rate', type=float, default=0.993)
-parser.add_argument('--epoch', type=int, default=2)
+parser.add_argument('--epoch', type=int, default=5)
 parser.add_argument('--action_num', type=int, default=9)
 parser.add_argument('--use_cuda', action="store_false", default=True)
 
@@ -32,12 +32,11 @@ args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 device = torch.device("cuda" if args.use_cuda and torch.cuda.is_available() else "cpu")
 
-
 global_is_end = 0
 
 
 def main():
-    offset=random.randint(0, 20) * 20
+    offset = random.randint(0, 20) * 20
     print(offset)
     common_config = CommonConfig('CIFAR10',
                                  args.model,
@@ -49,21 +48,19 @@ def main():
                                  args.ratio,
                                  args.algorithm,
                                  use_cuda=args.use_cuda,
-                                 master_listen_port_base=53300+offset
+                                 master_listen_port_base=53300 + offset
                                  )
 
     with open("worker_config.json") as json_file:
         workers_config = json.load(json_file)
 
-    global_model = models.create_model_instance(common_config.dataset, common_config.model)
+    # global_model = models.create_model_instance(common_config.dataset, common_config.model)
+    global_model=models.get_model(common_config.model)
     init_para = torch.nn.utils.parameters_to_vector(global_model.parameters())
     para_nums = torch.nn.utils.parameters_to_vector(global_model.parameters()).nelement()
     model_size = init_para.nelement() * 4 / 1024 / 1024
+    print("Model name: {}".format(common_config.model))
     print("Model Size: {} MB".format(model_size))
-    # with open('data/init_para', 'w') as f:
-    #     for para in init_para.data:
-    #         f.write(str(para.float()))
-    #         f.write('\n')
 
     worker_list = []
     for worker_idx, worker_config in enumerate(workers_config['worker_config_list']):
@@ -80,8 +77,8 @@ def main():
                    para_nums=para_nums
                    )
         )
-    worker_num=len(worker_list)
-    train_data_partition, test_data_partition = partition_data(common_config.dataset, args.data_pattern,worker_num)
+    worker_num = len(worker_list)
+    train_data_partition, test_data_partition = partition_data(common_config.dataset, args.data_pattern, worker_num)
 
     for worker_idx, worker in enumerate(worker_list):
         worker.config.para = init_para
@@ -126,10 +123,10 @@ def main():
             return
         else:
             print("get end")
-        
+
         global_para = torch.nn.utils.parameters_to_vector(global_model.parameters()).clone().detach()
         global_para = aggregate_model(global_para, worker_list, args.step_size)
-            
+
         # with open('data/para_epoch' + str(epoch_idx), 'w') as f:
         #     for para in global_para.data:
         #         f.write(str(float(para)))
@@ -144,9 +141,9 @@ def main():
             return
         else:
             print("send end")
-        
+
         torch.nn.utils.vector_to_parameters(global_para, global_model.parameters())
-        
+
         test_loss, acc = test(global_model, test_loader, device, model_type=args.model)
         common_config.recoder.add_scalar('Accuracy/average', acc, epoch_idx)
         common_config.recoder.add_scalar('Test_loss/average', test_loss, epoch_idx)
@@ -182,7 +179,8 @@ def communication_parallel(worker_list, action, data=None):
             if action == "init":
                 tasks.append(loop.run_in_executor(executor, worker.send_init_config))
             elif action == "get_model":
-                tasks.append(loop.run_in_executor(executor, get_compressed_model_top, worker.config, worker.socket, worker.para_nums))
+                tasks.append(loop.run_in_executor(executor, get_compressed_model_top, worker.config, worker.socket,
+                                                  worker.para_nums))
             # elif action == "get_time":
             #    tasks.append(loop.run_in_executor(executor, get_time, worker.config, worker.socket))
             elif action == "send_model":
