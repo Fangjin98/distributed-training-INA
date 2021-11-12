@@ -1,0 +1,64 @@
+{
+  "worker_config_list": [
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge0",
+      "computation": 3,
+      "dynamics": 2
+    },
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge1",
+      "computation": 4,
+      "dynamics": 2
+    },
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge2",
+      "computation": 5,
+      "dynamics": 3
+    },
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge3",
+      "computation": 6,
+      "dynamics": 4
+    },
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge4",
+      "computation": 7,
+      "dynamics": 3
+    },
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge5",
+      "computation": 8,
+      "dynamics": 2
+    },
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge6",
+      "computation": 4,
+      "dynamics": 3
+    },
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge7",
+      "computation": 5,
+      "dynamics": 4
+    },
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge8",
+      "computation": 6,
+      "dynamics": 2
+    },
+    {
+      "ip_address": "127.0.0.1",
+      "user_name": "edge9",
+      "computation": 3,
+      "dynamics": 2
+    }
+  ]
+}
