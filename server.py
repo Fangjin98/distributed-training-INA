@@ -3,6 +3,7 @@ import asyncio
 import concurrent.futures
 import json
 import random
+from re import L
 import numpy as np
 import torch
 from config import *
@@ -27,6 +28,7 @@ parser.add_argument('--epoch', type=int, default=2)
 parser.add_argument('--action_num', type=int, default=9)
 parser.add_argument('--worker_num', type=int, default=5)
 parser.add_argument('--use_cuda', action="store_false", default=True)
+parser.add_argument('--ip',type=str,default='127.0.0.1')
 args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -38,6 +40,9 @@ global_is_end = 0
 def main():
     offset = random.randint(0, 20) * 20
     print(offset)
+
+    server_ip=args.ip
+
     common_config = CommonConfig('CIFAR10',
                                  args.model,
                                  args.epoch,
@@ -48,7 +53,7 @@ def main():
                                  args.ratio,
                                  args.algorithm,
                                  use_cuda=args.use_cuda,
-                                 master_listen_port_base=53300 + offset
+                                 master_listen_port_base=53622 #53300+offset
                                  )
 
     with open("worker_config.json") as json_file:
@@ -62,27 +67,30 @@ def main():
     print("Model name: {}".format(common_config.model))
     print("Model Size: {} MB".format(model_size))
 
-    if args.worker_num>len(workers_config['worker_config_list']):
-        print("ERROR: too much workers")
-        return
+    worker_num=min(args.worker_num,len(workers_config['worker_config_list']))
 
     worker_list = []
-    for i in range(args.worker_num):
+    for i in range(worker_num):
         worker_config=workers_config['worker_config_list'][i]
         custom = dict()
         custom["computation"] = worker_config["computation"]
         custom["dynamics"] = worker_config["dynamics"]
         worker_list.append(
             Worker(config=ClientConfig(idx=i,
-                                       master_ip="127.0.0.1",
-                                       master_port=common_config.master_listen_port_base + i,
-                                       custom=custom),
+                                    client_host=worker_config["host"],
+                                    client_ip=worker_config["ip"],
+                                    client_port=worker_config["port"],
+                                    client_user=worker_config["user"],
+                                    client_pwd=worker_config['pwd'],
+                                    master_ip=server_ip,
+                                    master_port=common_config.master_listen_port_base + i,
+                                    custom=custom),
                    common_config=common_config,
-                   user_name=worker_config['user_name'],
+                   user_name=worker_config['name'],
                    para_nums=para_nums
                    )
         )
-    worker_num = len(worker_list)
+
     train_data_partition, test_data_partition = partition_data(common_config.dataset, args.data_pattern, worker_num)
 
     for worker_idx, worker in enumerate(worker_list):
