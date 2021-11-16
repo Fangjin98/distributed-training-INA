@@ -2,7 +2,7 @@ import argparse
 
 import torch
 import torch.optim as optim
-from pulp import *
+# from pulp import *
 from torch.utils.tensorboard import SummaryWriter
 from threading import Thread
 
@@ -39,7 +39,7 @@ parser.add_argument('--algorithm', type=str, default='proposed')
 args = parser.parse_args()
 
 if args.visible_cuda == '-1':
-    os.environ['CUDA_VISIBLE_DEVICES'] = str((int(args.idx)) % 2 + 0)
+    os.environ['CUDA_VISIBLE_DEVICES'] = str((int(args.idx)) % 2 + 2)
 else:
     os.environ['CUDA_VISIBLE_DEVICES'] = args.visible_cuda
 device = torch.device("cuda" if args.use_cuda and torch.cuda.is_available() else "cpu")
@@ -97,7 +97,8 @@ def main():
 
         if epoch > 1 and epoch % 1 == 0:
             epoch_lr = max((args.decay_rate * epoch_lr, args.min_lr))
-        print("epoch-{} lr: {}, ratio: {} ".format(epoch, epoch_lr, args.ratio))
+        print("model-{}-epoch-{} lr: {}, ratio: {} ".
+              format(args.model,epoch, epoch_lr, args.ratio))
         # print("local steps: ", local_steps)
         # print("Compression Ratio: ", compre_ratio)
 
@@ -108,7 +109,9 @@ def main():
                            model_type=args.model)
         local_para = torch.nn.utils.parameters_to_vector(local_model.parameters()).clone().detach()
 
-        write_tensor("data/log/epoch_{}_worker_{}".format(epoch, args.idx), local_para)
+        write_tensor("data/log/tensor/model_{}_epoch_{}_worker_{}".
+                     format(args.model,epoch, args.idx), local_para)
+
         train_time = time.time() - start_time
         train_time = train_time / local_steps
         print("train time: ", train_time)
