@@ -23,10 +23,10 @@ parser.add_argument('--ratio', type=float, default=1.0)
 parser.add_argument('--lr', type=float, default=0.1)
 parser.add_argument('--step_size', type=float, default=1.0)
 parser.add_argument('--decay_rate', type=float, default=0.993)
-parser.add_argument('--epoch', type=int, default=5)
+parser.add_argument('--epoch', type=int, default=2)
 parser.add_argument('--action_num', type=int, default=9)
+parser.add_argument('--worker_num', type=int, default=5)
 parser.add_argument('--use_cuda', action="store_false", default=True)
-
 args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -62,15 +62,20 @@ def main():
     print("Model name: {}".format(common_config.model))
     print("Model Size: {} MB".format(model_size))
 
+    if args.worker_num>len(workers_config['worker_config_list']):
+        print("ERROR: too much workers")
+        return
+
     worker_list = []
-    for worker_idx, worker_config in enumerate(workers_config['worker_config_list']):
+    for i in range(args.worker_num):
+        worker_config=workers_config['worker_config_list'][i]
         custom = dict()
         custom["computation"] = worker_config["computation"]
         custom["dynamics"] = worker_config["dynamics"]
         worker_list.append(
-            Worker(config=ClientConfig(idx=worker_idx,
+            Worker(config=ClientConfig(idx=i,
                                        master_ip="127.0.0.1",
-                                       master_port=common_config.master_listen_port_base + worker_idx,
+                                       master_port=common_config.master_listen_port_base + i,
                                        custom=custom),
                    common_config=common_config,
                    user_name=worker_config['user_name'],
