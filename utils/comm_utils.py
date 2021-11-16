@@ -22,8 +22,9 @@ def killport(port):
 def connect_send_socket(dst_ip, dst_port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # s.settimeout(120)
-
+    
     while s.connect_ex((dst_ip, dst_port)) != 0:
+        # print(1)
         sleep(0.5)
 
     return s
@@ -45,7 +46,7 @@ def connect_get_socket(listen_ip, listen_port):
             # print(listen_port)
             if time.time() - start_time > 30:
                 sys.exit(0)
-    s.listen(1)
+    s.listen()
 
     conn, _ = s.accept()
 

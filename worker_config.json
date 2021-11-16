@@ -1,22 +1,14 @@
 {
   "worker_config_list": [
     {
-      "ip_address": "127.0.0.1",
-      "user_name": "edge0",
+      "name": "edge0",
+      "host": "edge404",
+      "ip": "172.16.50.21",
+      "port": "6404",
+      "user": "jfang",
+      "pwd": "8Yy6d79xeUi++9EfWnjcWA==",
       "computation": 3,
       "dynamics": 2
-    },
-    {
-      "ip_address": "127.0.0.1",
-      "user_name": "edge1",
-      "computation": 4,
-      "dynamics": 2
-    },
-    {
-      "ip_address": "127.0.0.1",
-      "user_name": "edge2",
-      "computation": 5,
-      "dynamics": 3
     }
   ]
 }

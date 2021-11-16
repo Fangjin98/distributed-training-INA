@@ -54,8 +54,8 @@ def main():
     client_config = ClientConfig()
     recorder = SummaryWriter("log_" + str(client_config.idx))
     # receive config
-    print(str(args.master_ip), str(args.master_port))
-    master_socket = connect_get_socket(args.master_ip, args.master_port)
+    print(str(args.client_ip), str(args.master_port))
+    master_socket = connect_get_socket(args.client_ip, args.master_port)
     config_received = get_data_socket(master_socket)
 
     print(config_received)
