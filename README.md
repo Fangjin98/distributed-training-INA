@@ -24,4 +24,4 @@ pip3 install torch==1.10.0+cpu torchvision==0.11.1+cpu torchaudio==0.10.0+cpu -f
 
 ## Usage
 
-run ```bash python3 server.py ```
+run ```python3 server.py ```
