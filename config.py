@@ -4,16 +4,34 @@ from typing import List
 from torch.utils.tensorboard import SummaryWriter
 from utils.comm_utils import *
 
-
-script_path_of_host= {
+script_path_of_host = {
     "edge401": '/home/jfang/.conda/envs/fj/bin/python3',
     "edge404": '/data/yxu/software/Anaconda/envs/fj/bin/python3'
 }
 
-work_dir_of_host={
+work_dir_of_host = {
     "edge401": '/home/jfang/distributed_PS_ML',
     "edge404": '/home/jfang/distributed_PS_ML'
 }
+
+TYPE_NGA = 0x12
+
+# Header
+WORKERMAPBIT = 32
+DEGREEBIT = 5
+OVERFLOWBIT = 1
+ISACKBIT = 1
+ECNBIT = 1
+RESENDBIT = 1
+INDEXBIT = 5
+TIMEBIT = 5
+SWITCHIDBIT = 5
+SEQUENCEBIT = 32
+
+# Payload
+DATANUM = 32
+DATABYTE = 124
+
 
 class Worker:
     def __init__(self,
@@ -37,22 +55,22 @@ class Worker:
         #     self.__start_remote_worker_process()
 
     def __start_local_worker_process(self):
-        cmd = 'cd ' + os.getcwd() + ';nohup ' + 'python3' + ' -u client.py '+\
-            ' --master_port ' +  str(self.config.master_port) + \
-            ' --idx ' + str(self.idx) + \
-            ' --dataset ' + str(self.common_config.dataset) + \
-            ' --model ' + str(self.common_config.model) + \
-            ' --epoch ' + str(self.common_config.epoch) + \
-            ' --batch_size ' + str(self.common_config.batch_size) + \
-            ' --ratio ' + str(self.common_config.ratio) + \
-            ' --lr ' + str(self.common_config.lr) + \
-            ' --decay_rate ' + str(self.common_config.decay_rate) + \
-            ' --algorithm ' + self.common_config.algorithm + \
-            ' --step_size ' + str(self.common_config.step_size) + \
-            ' > data/log/client_' + str(self.idx) + '_log.txt 2>&1 &'
+        cmd = 'cd ' + os.getcwd() + ';nohup ' + 'python3' + ' -u client.py ' + \
+              ' --master_port ' + str(self.config.master_port) + \
+              ' --idx ' + str(self.idx) + \
+              ' --dataset ' + str(self.common_config.dataset) + \
+              ' --model ' + str(self.common_config.model) + \
+              ' --epoch ' + str(self.common_config.epoch) + \
+              ' --batch_size ' + str(self.common_config.batch_size) + \
+              ' --ratio ' + str(self.common_config.ratio) + \
+              ' --lr ' + str(self.common_config.lr) + \
+              ' --decay_rate ' + str(self.common_config.decay_rate) + \
+              ' --algorithm ' + self.common_config.algorithm + \
+              ' --step_size ' + str(self.common_config.step_size) + \
+              ' > data/log/client_' + str(self.idx) + '_log.txt 2>&1 &'
 
         print(cmd)
-        
+
         os.system(cmd)
 
     def __start_remote_worker_process(self):
@@ -60,51 +78,51 @@ class Worker:
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
             ssh.connect(hostname=self.config.client_ip, port=int(self.config.client_port),
-                    username=self.config.client_user, password=self.config.client_pwd)
+                        username=self.config.client_user, password=self.config.client_pwd)
         except Exception as e:
             print("SSH FAILED: {}".format(self.config.client_ip))
             print(e)
             ssh.close()
         else:
-            
-            cmd = 'cd ' + work_dir_of_host[self.config.client_host] + ';nohup ' + script_path_of_host[self.config.client_host] + ' -u client.py '+\
-            ' --master_ip '  + str(self.config.master_ip) + \
-            ' --master_port ' +  str(self.config.master_port) + \
-            ' --client_ip ' + str(self.config.client_ip) + \
-            ' --idx ' + str(self.idx) + \
-            ' --dataset ' + str(self.common_config.dataset) + \
-            ' --model ' + str(self.common_config.model) + \
-            ' --epoch ' + str(self.common_config.epoch) + \
-            ' --batch_size ' + str(self.common_config.batch_size) + \
-            ' --ratio ' + str(self.common_config.ratio) + \
-            ' --lr ' + str(self.common_config.lr) + \
-            ' --decay_rate ' + str(self.common_config.decay_rate) + \
-            ' --algorithm ' + self.common_config.algorithm + \
-            ' --step_size ' + str(self.common_config.step_size) + \
-            ' > data/log/client_' + str(self.idx) + '_log.txt 2>&1 &'
-            
+
+            cmd = 'cd ' + work_dir_of_host[self.config.client_host] + ';nohup ' + script_path_of_host[
+                self.config.client_host] + ' -u client.py ' + \
+                  ' --master_ip ' + str(self.config.master_ip) + \
+                  ' --master_port ' + str(self.config.master_port) + \
+                  ' --client_ip ' + str(self.config.client_ip) + \
+                  ' --idx ' + str(self.idx) + \
+                  ' --dataset ' + str(self.common_config.dataset) + \
+                  ' --model ' + str(self.common_config.model) + \
+                  ' --epoch ' + str(self.common_config.epoch) + \
+                  ' --batch_size ' + str(self.common_config.batch_size) + \
+                  ' --ratio ' + str(self.common_config.ratio) + \
+                  ' --lr ' + str(self.common_config.lr) + \
+                  ' --decay_rate ' + str(self.common_config.decay_rate) + \
+                  ' --algorithm ' + self.common_config.algorithm + \
+                  ' --step_size ' + str(self.common_config.step_size) + \
+                  ' > data/log/client_' + str(self.idx) + '_log.txt 2>&1 &'
+
             print("Execute cmd.")
             print(cmd)
 
             stdin, stdout, stderr = ssh.exec_command(cmd)
 
-            output=[]
+            output = []
             out = stdout.read()
             error = stderr.read()
             if out:
                 print('[%s] OUT:\n%s' % (self.config.client_ip, out.decode('utf8')))
                 output.append(out.decode('utf-8'))
             if error:
-                print('ERROR:[%s]\n%s' % (self.config.client_ip,error.decode('utf8')))
+                print('ERROR:[%s]\n%s' % (self.config.client_ip, error.decode('utf8')))
                 output.append(str(self.config.client_ip) + ' ' + error.decode('utf-8'))
             print(output)
-            
 
     def send_data(self, data):
         send_data_socket(data, self.socket)
 
     def send_init_config(self):
-        print(self.config.client_ip,self.config.master_port)
+        print(self.config.client_ip, self.config.master_port)
         self.socket = connect_send_socket(self.config.client_ip, int(self.config.master_port))
         send_data_socket(self.config, self.socket)
 
@@ -149,27 +167,27 @@ class CommonConfig:
 
         self.master_listen_port_base = master_listen_port_base
         self.recoder = summary_writer
-        self.project_dir=project_dir
+        self.project_dir = project_dir
 
 
 class ClientConfig:
     def __init__(self,
                  idx: int = 0,
-                 client_host: str =None,
-                 client_ip: str ='127.0.0.1',
+                 client_host: str = None,
+                 client_ip: str = '127.0.0.1',
                  client_port: str = None,
                  client_user: str = None,
                  client_pwd: str = None,
-                 master_ip: str ='127.0.0.1',
-                 master_port: int=0,
+                 master_ip: str = '127.0.0.1',
+                 master_port: int = 0,
                  custom: dict = dict()
                  ):
         self.idx = idx
-        self.client_host=client_host
+        self.client_host = client_host
         self.client_ip = client_ip
-        self.client_port=client_port
-        self.client_user=client_user
-        self.client_pwd=client_pwd
+        self.client_port = client_port
+        self.client_user = client_user
+        self.client_pwd = client_pwd
         self.master_ip = master_ip
         self.master_port = master_port
         self.neighbor_paras = None
