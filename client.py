@@ -8,6 +8,7 @@ from threading import Thread
 
 from config import ClientConfig
 from utils import models, datasets
+from utils.DataManager import DataManager
 from utils.comm_utils import *
 from utils.file_utils import write_tensor_to_file
 from utils.training_utils import train, test
@@ -35,6 +36,7 @@ parser.add_argument('--use_cuda', action="store_false", default=True)
 parser.add_argument('--adaptive', action="store_false", default=False)
 parser.add_argument('--visible_cuda', type=str, default='-1')
 parser.add_argument('--algorithm', type=str, default='proposed')
+parser.add_argument('--write_to_file', type=bool, default=False)
 
 args = parser.parse_args()
 
@@ -48,6 +50,12 @@ device = torch.device("cuda" if args.use_cuda and torch.cuda.is_available() else
 def write_tensor(filename, tensor):
     t = Thread(target=write_tensor_to_file, args=(filename, tensor))
     t.start()
+
+def tensor_to_float(tensor_data):
+    data=[]
+    for t in tensor_data:
+        data.append(t.float())
+    return data
 
 
 def main():
@@ -98,7 +106,7 @@ def main():
         if epoch > 1 and epoch % 1 == 0:
             epoch_lr = max((args.decay_rate * epoch_lr, args.min_lr))
         print("model-{}-epoch-{} lr: {}, ratio: {} ".
-              format(args.model,epoch, epoch_lr, args.ratio))
+              format(args.model, epoch, epoch_lr, args.ratio))
         # print("local steps: ", local_steps)
         # print("Compression Ratio: ", compre_ratio)
 
@@ -109,8 +117,9 @@ def main():
                            model_type=args.model)
         local_para = torch.nn.utils.parameters_to_vector(local_model.parameters()).clone().detach()
 
-        write_tensor("data/log/tensor/model_{}_epoch_{}_worker_{}".
-                     format(args.model,epoch, args.idx), local_para)
+        if args.write_to_file:
+            write_tensor("data/log/tensor/model_{}_epoch_{}_worker_{}".
+                         format(args.model, epoch, args.idx), local_para)
 
         train_time = time.time() - start_time
         train_time = train_time / local_steps
@@ -123,12 +132,17 @@ def main():
         print("after aggregation, epoch: {}, train loss: {}, test loss: {}, test accuracy: {}".format(epoch, train_loss,
                                                                                                       test_loss, acc))
         print("send para")
-        compressed_paras = local_para
+
         start_time = time.time()
-        send_data_socket(compressed_paras, master_socket)
+        send_data_socket(local_para, master_socket)
+
+        data_manager = DataManager(src_ip=args.client_ip,
+                                   dst_ip=args.master_ip,
+                                   data=tensor_to_float(local_para),
+                                   interface='eno5')
+        data_manager.send_data(worker_id=args.idx, switch_id=1, degree=2)
+
         send_time = time.time() - start_time
-        # compress_para = int(local_para.nelement() * compre_ratio)
-        # send_time=send_time/compress_para
         print("send time: ", send_time)
         # send_data_socket((train_time, send_time), master_socket)
         print("get begin")
