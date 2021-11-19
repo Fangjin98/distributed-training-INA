@@ -14,24 +14,6 @@ work_dir_of_host = {
     "edge404": '/home/jfang/distributed_PS_ML'
 }
 
-TYPE_NGA = 0x12
-
-# Header
-WORKERMAPBIT = 32
-DEGREEBIT = 5
-OVERFLOWBIT = 1
-ISACKBIT = 1
-ECNBIT = 1
-RESENDBIT = 1
-INDEXBIT = 5
-TIMEBIT = 5
-SWITCHIDBIT = 5
-SEQUENCEBIT = 32
-
-# Payload
-DATANUM = 32
-DATABYTE = 124
-
 
 class Worker:
     def __init__(self,

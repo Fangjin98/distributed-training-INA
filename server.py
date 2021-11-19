@@ -28,7 +28,7 @@ parser.add_argument('--epoch', type=int, default=2)
 parser.add_argument('--action_num', type=int, default=9)
 parser.add_argument('--worker_num', type=int, default=5)
 parser.add_argument('--use_cuda', action="store_false", default=True)
-parser.add_argument('--ip',type=str,default='127.0.0.1')
+parser.add_argument('--ip', type=str, default='127.0.0.1')
 args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -41,7 +41,7 @@ def main():
     offset = random.randint(0, 20) * 20
     print(offset)
 
-    server_ip=args.ip
+    server_ip = args.ip
 
     common_config = CommonConfig('CIFAR10',
                                  args.model,
@@ -53,38 +53,38 @@ def main():
                                  args.ratio,
                                  args.algorithm,
                                  use_cuda=args.use_cuda,
-                                 master_listen_port_base=53622 #53300+offset
+                                 master_listen_port_base=53622  # 53300+offset
                                  )
 
     with open("worker_config.json") as json_file:
         workers_config = json.load(json_file)
 
     # global_model = models.create_model_instance(common_config.dataset, common_config.model)
-    global_model=models.get_model(common_config.model)
+    global_model = models.get_model(common_config.model)
     init_para = torch.nn.utils.parameters_to_vector(global_model.parameters())
     para_nums = torch.nn.utils.parameters_to_vector(global_model.parameters()).nelement()
     model_size = init_para.nelement() * 4 / 1024 / 1024
     print("Model name: {}".format(common_config.model))
     print("Model Size: {} MB".format(model_size))
 
-    worker_num=min(args.worker_num,len(workers_config['worker_config_list']))
+    worker_num = min(args.worker_num, len(workers_config['worker_config_list']))
 
     worker_list = []
     for i in range(worker_num):
-        worker_config=workers_config['worker_config_list'][i]
+        worker_config = workers_config['worker_config_list'][i]
         custom = dict()
         custom["computation"] = worker_config["computation"]
         custom["dynamics"] = worker_config["dynamics"]
         worker_list.append(
             Worker(config=ClientConfig(idx=i,
-                                    client_host=worker_config["host"],
-                                    client_ip=worker_config["ip"],
-                                    client_port=worker_config["port"],
-                                    client_user=worker_config["user"],
-                                    client_pwd=worker_config['pwd'],
-                                    master_ip=server_ip,
-                                    master_port=common_config.master_listen_port_base + i,
-                                    custom=custom),
+                                       client_host=worker_config["host"],
+                                       client_ip=worker_config["ip"],
+                                       client_port=worker_config["port"],
+                                       client_user=worker_config["user"],
+                                       client_pwd=worker_config['pwd'],
+                                       master_ip=server_ip,
+                                       master_port=common_config.master_listen_port_base + i,
+                                       custom=custom),
                    common_config=common_config,
                    user_name=worker_config['name'],
                    para_nums=para_nums
@@ -125,6 +125,8 @@ def main():
 
     # local_steps,compre_ratio=40,0.5
     for epoch_idx in range(1, 1 + common_config.epoch):
+
+        # TODO: modify get locat_para from nic not workers
 
         print("get begin")
         try:
@@ -167,6 +169,18 @@ def main():
 
     for worker in worker_list:
         worker.socket.shutdown(2)
+
+
+def aggregate_model_nic(local_para, para_list, step_size):
+    with torch.no_grad():
+        para_delta = torch.zeros_like(local_para)
+        for para in para_list:
+            model_delta = (para_list - local_para)
+            para_delta += step_size * model_delta
+
+        local_para += (para_delta / float(len(para_list)))
+
+    return local_para
 
 
 def aggregate_model(local_para, worker_list, step_size):
