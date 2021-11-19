@@ -1,6 +1,6 @@
 from scapy.all import *
 from scapy.layers.inet import IP
-from config import *
+from header_config import *
 
 
 class NGA(Packet):

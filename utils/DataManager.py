@@ -1,8 +1,8 @@
 from scapy.all import *
 from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
-from config import *
-from NGAPacket import *
+from header_config import *
+from utils.NGAPacket import *
 
 
 def float_to_int(num_list):
@@ -72,7 +72,7 @@ class DataManager:
             packet_list.append(
                 Ether(src=get_if_hwaddr(self.iface), dst='ff:ff:ff:ff:ff:ff') /
                 IP(dst=self.dst_ip, proto=TYPE_NGA) /
-                NGA(aggregationDegree=degree, aggIndex=i, switchId=switch_id) /
+                NGA(aggregation_degree=degree, agg_index=i, switch_id=switch_id) /
                 NGAData(**dict(zip(args, self.data[left:right])))
             )
         return packet_list
