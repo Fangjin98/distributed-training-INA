@@ -1,7 +1,6 @@
 from scapy.all import *
 from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
-from header_config import *
 from utils.NGAPacket import *
 
 
@@ -61,9 +60,9 @@ class DataManager:
 
     def _partition_data(self, worker_id, switch_id, degree):
         packet_list = []
-        for i, index in enumerate(range(0, len(self.data), DATANUM)):
+        for i, index in enumerate(range(0, len(self.data), DATA_NUM)):
             left = index
-            right = index + DATANUM if (index + DATANUM <= len(self.data)) else len(self.data)
+            right = index + DATA_NUM if (index + DATA_NUM <= len(self.data)) else len(self.data)
 
             args = ["d00", "d01", "d02", "d03", "d04", "d05", "d06", "d07", "d08", "d09", "d10", "d11", "d12", "d13",
                     "d14", "d15", "d16", "d17", "d18", "d19", "d20", "d21", "d22", "d23", "d24", "d25", "d26", "d27",
@@ -71,8 +70,13 @@ class DataManager:
 
             packet_list.append(
                 Ether(src=get_if_hwaddr(self.iface), dst='ff:ff:ff:ff:ff:ff') /
-                IP(dst=self.dst_ip, proto=TYPE_NGA) /
-                NGA(aggregation_degree=degree, agg_index=i, switch_id=switch_id) /
+                IP(src=self.src_ip, dst=self.dst_ip, proto=NGA_TYPE) /
+                NGA(worker_map=worker_id,
+                    aggregation_degree=degree,
+                    timestamp=i,
+                    agg_index=i,
+                    sequence_id=i,
+                    switch_id=switch_id) /
                 NGAData(**dict(zip(args, self.data[left:right])))
             )
         return packet_list

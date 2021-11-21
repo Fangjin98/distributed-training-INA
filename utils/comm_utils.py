@@ -8,7 +8,6 @@ import time
 
 
 def is_port_in_use(port):
-    import socket
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
@@ -22,7 +21,7 @@ def killport(port):
 def connect_send_socket(dst_ip, dst_port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # s.settimeout(120)
-    
+
     while s.connect_ex((dst_ip, dst_port)) != 0:
         # print(1)
         sleep(0.5)
