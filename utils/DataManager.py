@@ -1,5 +1,6 @@
 import struct
 import time
+from operator import mod
 
 from scapy.all import *
 from scapy.layers.inet import IP
@@ -43,31 +44,26 @@ class DataManager:
 
     def send_data(self, worker_id, switch_id, degree):
         print("send to nic...")
-        print("Len: {}".format(len(self.data)))
-        # args = ["d00", "d01", "d02", "d03", "d04", "d05", "d06", "d07", "d08", "d09", "d10", "d11", "d12", "d13",
-        #         "d14", "d15", "d16", "d17", "d18", "d19", "d20", "d21", "d22", "d23", "d24", "d25", "d26", "d27",
-        #         "d28", "d29", "d30", "d31"]
-        # mac = get_if_hwaddr(self.iface)
+
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_RAW, NGA_TYPE)
         except OSError as e:
             print(e)
             sys.exit(1)
         else:
-            start_time=time.time()
+            start_time = time.time()
+            data_num = len(self.data)
+            for i in range(mod(data_num, DATA_NUM)):
+                self.data.append(int(0).to_bytes(4, byteorder='little', signed=True))
             for i, index in enumerate(range(0, len(self.data), DATA_NUM)):
                 left = index
-                right = index + DATA_NUM if (index + DATA_NUM <= len(self.data)) else len(self.data)
                 nga = struct.pack(
                     'IBBBBI', worker_id, degree, 0, 0, switch_id, i
                 )
-                for d in self.data[left:right]:
+                for d in self.data[left:left+DATA_NUM]:
                     nga += d
-                if right-left < DATA_NUM:
-                    for j in range(DATA_NUM-right+left):
-                        nga += struct.pack('L', 0)
                 s.sendto(nga, (self.dst_ip, 0))
-            total_time=time.time()-start_time
+            total_time = time.time() - start_time
 
         print("END: send to nic.")
         print("Total time: {}.".format(total_time))

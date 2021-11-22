@@ -124,7 +124,7 @@ def main():
         start_time = time.time()
         send_data_socket(local_para, master_socket)
         send_time = time.time() - start_time
-        print("send time: ", send_time)
+        print("Socket send time: ", send_time)
 
         data_manager = DataManager(src_ip=args.client_nic_ip,
                                    dst_ip=args.master_nic_ip,
@@ -132,7 +132,6 @@ def main():
                                    interface='eno5')
         t1 = Thread(target=data_manager.send_data, args=(int(args.idx), 1, 2))
         t1.start()
-        # data_manager.send_data(worker_id=args.idx, switch_id=1, degree=2)
 
         print("get begin")
         local_para = get_data_socket(master_socket)
