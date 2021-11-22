@@ -17,7 +17,7 @@ if __name__ == "__main__":
     src_ip = args.src_ip
     iface = args.iface
     print("send src_ip: {}, dst_ip: {}, iface: {}.".format(src_ip, dst_ip, iface))
-    data = [float(i) for i in range(100)]
+    data = [0.00525252525 for i in range(100)]
     datamanger = DataManager(src_ip, dst_ip, data, iface)
     print("Sending packets...")
     datamanger.send_data(1, 2, 3)

@@ -67,15 +67,15 @@ def get_data_socket(conn):
 
 
 def float_to_int(num_list):
-    scale_factor = 100000000
+    scale_factor = 10000
     res = []
     for num in num_list:
-        res.append(struct.pack("I", int(num * scale_factor)))
+        res.append(int(num * scale_factor).to_bytes(4, byteorder='little', signed=True))
     return res
 
 
 def int_to_float(num_list):
-    scale_factor = 100000000.0
+    scale_factor = 10000.0
     res = []
     for num in num_list:
         res.append(float(num / scale_factor))

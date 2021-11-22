@@ -126,8 +126,6 @@ def main():
         send_time = time.time() - start_time
         print("send time: ", send_time)
 
-        print(type(local_para.detach().tolist()[0]))
-
         data_manager = DataManager(src_ip=args.client_nic_ip,
                                    dst_ip=args.master_nic_ip,
                                    data=local_para.detach().tolist(),

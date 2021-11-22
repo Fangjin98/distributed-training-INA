@@ -1,11 +1,10 @@
 import struct
 from ctypes import Structure, c_ubyte, c_ushort, c_uint, c_ulong, c_byte
 import socket
-
 from scapy.all import *
 from scapy.layers.inet import IP
 from header_config import *
-from utils.DataManager import int_to_float
+from utils.comm_utils import int_to_float
 
 
 class NGA(Packet):
@@ -98,8 +97,8 @@ class NGAHeader(Structure):
             self.protocol = self.protocol_map[self.protocol_num]
         except Exception as e:
             self.protocol = str(self.protocol_num)
-        self.workermap = struct.unpack(">I", self.worker_map)[0]
-        self.sequenceid = struct.unpack(">I", self.sequence_id)[0]
+        self.workermap = struct.unpack("I", self.worker_map)[0]
+        self.sequenceid = struct.unpack("I", self.sequence_id)[0]
 
 
 class NGAPayload(Structure):
@@ -114,7 +113,7 @@ class NGAPayload(Structure):
         super().__init__()
         self.data = []
         for i in range(DATA_NUM):
-            self.data.append(socket.ntohl(self.payload[i]))
+            self.data.append(self.payload[i])
         self.data = int_to_float(self.data)
 
 
