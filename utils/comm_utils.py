@@ -64,3 +64,19 @@ def get_data_socket(conn):
     recv_data = pickle.loads(data)
 
     return recv_data
+
+
+def float_to_int(num_list):
+    scale_factor = 100000000
+    res = []
+    for num in num_list:
+        res.append(struct.pack("I", int(num * scale_factor)))
+    return res
+
+
+def int_to_float(num_list):
+    scale_factor = 100000000.0
+    res = []
+    for num in num_list:
+        res.append(float(num / scale_factor))
+    return res

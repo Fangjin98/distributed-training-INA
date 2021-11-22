@@ -20,7 +20,9 @@ parser.add_argument('--master_ip', type=str, default="127.0.0.1",
                     help='IP address for controller or ps')
 parser.add_argument('--master_port', type=int, default=58000, metavar='N',
                     help='')
+parser.add_argument('--master_nic_ip',type=str, default="127.0.0.1")
 parser.add_argument('--client_ip', type=str, default='127.0.0.1')
+parser.add_argument('--client_nic_ip', type=str, default='127.0.0.1')
 parser.add_argument('--dataset', type=str, default='MNIST')
 parser.add_argument('--model', type=str, default='LR')
 parser.add_argument('--batch_size', type=int, default=64)
@@ -51,12 +53,6 @@ def write_tensor(filename, tensor):
     t = Thread(target=write_tensor_to_file, args=(filename, tensor))
     t.start()
 
-def tensor_to_float(tensor_data):
-    data=[]
-    for t in tensor_data:
-        data.append(t.float())
-    return data
-
 
 def main():
     client_config = ClientConfig()
@@ -82,7 +78,6 @@ def main():
     print('Create local model.')
 
     local_model = models.get_model(args.model)
-    # local_model.load_state_dict(client_config.para)
     torch.nn.utils.vector_to_parameters(client_config.para, local_model.parameters())
     local_model.to(device)
     para_nums = torch.nn.utils.parameters_to_vector(local_model.parameters()).nelement()
@@ -100,17 +95,10 @@ def main():
     epoch_lr = args.lr
     local_steps, compre_ratio = 50, 1
     for epoch in range(1, 1 + args.epoch):
-
-        # local_steps, compre_ratio = get_data_socket(master_socket)
-
         if epoch > 1 and epoch % 1 == 0:
             epoch_lr = max((args.decay_rate * epoch_lr, args.min_lr))
         print("model-{}-epoch-{} lr: {}, ratio: {} ".
               format(args.model, epoch, epoch_lr, args.ratio))
-        # print("local steps: ", local_steps)
-        # print("Compression Ratio: ", compre_ratio)
-
-        # print("***")
         start_time = time.time()
         optimizer = optim.SGD(local_model.parameters(), lr=epoch_lr, weight_decay=args.weight_decay)
         train_loss = train(local_model, train_loader, optimizer, local_iters=local_steps, device=device,
@@ -135,16 +123,19 @@ def main():
 
         start_time = time.time()
         send_data_socket(local_para, master_socket)
-
-        data_manager = DataManager(src_ip=args.client_ip,
-                                   dst_ip=args.master_ip,
-                                   data=tensor_to_float(local_para),
-                                   interface='eno5')
-        data_manager.send_data(worker_id=args.idx, switch_id=1, degree=2)
-
         send_time = time.time() - start_time
         print("send time: ", send_time)
-        # send_data_socket((train_time, send_time), master_socket)
+
+        print(type(local_para.detach().tolist()[0]))
+
+        data_manager = DataManager(src_ip=args.client_nic_ip,
+                                   dst_ip=args.master_nic_ip,
+                                   data=local_para.detach().tolist(),
+                                   interface='eno5')
+        t1 = Thread(target=data_manager.send_data, args=(int(args.idx), 1, 2))
+        t1.start()
+        # data_manager.send_data(worker_id=args.idx, switch_id=1, degree=2)
+
         print("get begin")
         local_para = get_data_socket(master_socket)
         print("get end")
