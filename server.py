@@ -3,6 +3,7 @@ import asyncio
 import concurrent.futures
 import json
 import random
+from functools import singledispatch
 from re import L
 import numpy as np
 import torch
@@ -33,6 +34,7 @@ parser.add_argument('--worker_num', type=int, default=5)
 parser.add_argument('--use_cuda', action="store_false", default=True)
 parser.add_argument('--ip', type=str, default='127.0.0.1')
 parser.add_argument('--nic_ip', type=str, default='127.0.0.1')
+parser.add_argument('--write_to_file', type=bool, default=False)
 args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -52,6 +54,7 @@ def main():
                                  args.step_size,
                                  args.ratio,
                                  args.algorithm,
+                                 write_to_file=args.write_to_file,
                                  use_cuda=args.use_cuda,
                                  master_listen_port_base=53622  # 53300+offset
                                  )
@@ -129,12 +132,19 @@ def main():
         #  communication_parallel(worker_list, action="get_time")
         print("get end")
 
-        para = get_data_from_nic(nic_socket)
-        print(para)
+        # recv_thread = RecvThread(func=get_data_from_nic, args=(nic_socket,))
+        # recv_thread.start()
 
         global_para = torch.nn.utils.parameters_to_vector(global_model.parameters()).clone().detach()
+        # recv_thread.join()
+        # updated_para = recv_thread.get_result()
+        # tmp_para = aggregate_model_from_nic(global_para, updated_para, args.step_size, worker_num)
         global_para = aggregate_model(global_para, worker_list, args.step_size)
-        print(global_para)
+
+        # delta = 0
+        # for para1, para2 in zip(tmp_para, global_para):
+        #     delta += (para1 - para2)
+        # print(delta)
 
         print("send begin")
         communication_parallel(worker_list, action="send_model", data=global_para)
@@ -158,9 +168,9 @@ def get_data_from_nic(s):
     start_time = time.time()
 
     while True:
+        # s.settimeout(3)
         raw_data = s.recvfrom(HEADER_BYTE + DATA_BYTE)[0]
         nga_header = NGAHeader(raw_data[:HEADER_BYTE])
-        print("Workerid and sequenceid: {} {}".format(nga_header.workermap, nga_header.sequenceid))
         if nga_header.sequenceid == -1:
             break
         nga_payload = NGAPayload(raw_data[HEADER_BYTE:])
@@ -172,18 +182,12 @@ def get_data_from_nic(s):
     return torch.Tensor(recv_data)
 
 
-def aggregate_model_nic(local_para, para_list, step_size):
-    with torch.no_grad():
-        para_delta = torch.zeros_like(local_para)
-        for para in para_list:
-            model_delta = (para_list - local_para)
-            para_delta += step_size * model_delta
-
-        local_para += (para_delta / float(len(para_list)))
-
-    return local_para
+# @singledispatch
+# def aggregate_mode(updated_para, local_para, step_size, worker_num):
+#     return NotImplemented
 
 
+# @aggregate_mode.register(Worker)
 def aggregate_model(local_para, worker_list, step_size):
     with torch.no_grad():
         para_delta = torch.zeros_like(local_para)
@@ -191,9 +195,24 @@ def aggregate_model(local_para, worker_list, step_size):
         for worker in worker_list:
             model_delta = (worker.config.neighbor_paras - local_para)
             para_delta += step_size * average_weight * model_delta
+        # elif source == 'nic':
+        #     para_delta = torch.zeros_like(local_para)
+        #     average_weight = 1.0 / (worker_num + 1)
+        #     model_delta = (updated_para - local_para)
+        #     para_delta += step_size * average_weight * model_delta
+        # else:
+        #     print("ERROR: illegal source.")
+        #     return local_para
 
         local_para += para_delta
 
+    return local_para
+
+
+def aggregate_model_from_nic(local_para, updated_para, step_size, worker_num):
+    with torch.no_grad():
+        delta = (updated_para - local_para)
+        local_para += ((step_size * delta) / (worker_num + 1))
     return local_para
 
 
@@ -220,13 +239,6 @@ def communication_parallel(worker_list, action, data=None):
         loop.close()
     except:
         sys.exit(0)
-
-
-def get_time(config, socket):
-    train_time, send_time = get_data_socket(socket)
-    config.train_time = train_time
-    config.send_time = send_time
-    print(config.idx, " train time: ", train_time, " send time: ", send_time)
 
 
 def get_compressed_model_top(config, socket, nelement):

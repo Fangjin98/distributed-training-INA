@@ -51,7 +51,7 @@ class DataManager:
         else:
             start_time = time.time()
             data_num = len(self.data)
-            for i in range(DATA_NUM-mod(data_num, DATA_NUM)):
+            for i in range(DATA_NUM - mod(data_num, DATA_NUM)):
                 self.data.append(int(0).to_bytes(4, byteorder='little', signed=True))
             for i, index in enumerate(range(0, len(self.data), DATA_NUM)):
                 left = index
@@ -64,6 +64,8 @@ class DataManager:
             nga_end = struct.pack(
                 'IBBBBi', worker_id, degree, 0, 0, switch_id, -1
             )
+            # for d in range(DATA_NUM):
+            #     nga_end += int(0).to_bytes(4, byteorder='little', signed=True)
             s.sendto(nga_end, (self.dst_ip, 0))
             total_time = time.time() - start_time
 
@@ -72,4 +74,3 @@ class DataManager:
 
     def update_data(self, new_data):
         self.data = float_to_int(new_data)
-

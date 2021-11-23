@@ -1,5 +1,5 @@
 import struct
-from ctypes import Structure, c_ubyte, c_ushort, c_uint, c_ulong, c_byte
+from ctypes import Structure, c_ubyte, c_ushort, c_uint, c_ulong, c_byte, c_int
 import socket
 from scapy.all import *
 from scapy.layers.inet import IP
@@ -74,12 +74,12 @@ class NGAHeader(Structure):
         ("sum", c_ushort),
         ("src", c_uint),
         ("dst", c_uint),
-        ("worker_map", c_ubyte * 4),
-        ("degree", c_ubyte),
-        ("overflow_isack_ecn_resend_time", c_ubyte),
-        ("index", c_ubyte),
-        ("switch_id", c_ubyte),
-        ("sequence_id", c_ubyte * 4)
+        ("worker_map", c_byte * 4),
+        ("degree", c_byte),
+        ("overflow_isack_ecn_resend_time", c_byte),
+        ("index", c_byte),
+        ("switch_id", c_byte),
+        ("sequence_id", c_byte * 4)
     ]
 
     def __new__(self, socket_buffer=None):
@@ -103,7 +103,7 @@ class NGAHeader(Structure):
 
 class NGAPayload(Structure):
     _fields_ = [
-        ("payload", c_uint * DATA_NUM)
+        ("payload", c_int * DATA_NUM)
     ]
 
     def __new__(self, socket_buffer=None):

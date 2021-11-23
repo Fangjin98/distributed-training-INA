@@ -3,6 +3,7 @@ import sys
 import struct
 import socket
 import pickle
+import threading
 from time import sleep
 import time
 
@@ -82,3 +83,19 @@ def int_to_float(num_list):
     for num in num_list:
         res.append(float(num / scale_factor))
     return res
+
+
+class RecvThread(threading.Thread):
+    def __init__(self, func, args=()):
+        super(RecvThread, self).__init__()
+        self.func = func
+        self.args = args
+        self.result = None
+
+    def run(self):
+        self.result = self.func(*self.args)
+
+    def get_result(self):
+        threading.Thread.join(self)
+        return self.result
+

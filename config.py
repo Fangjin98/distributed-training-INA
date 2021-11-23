@@ -89,6 +89,7 @@ class Worker:
                   ' --decay_rate ' + str(self.common_config.decay_rate) + \
                   ' --algorithm ' + self.common_config.algorithm + \
                   ' --step_size ' + str(self.common_config.step_size) + \
+                  ' --write_to_file '+ str(self.common_config.write_to_file) + \
                   ' > data/log/client_' + str(self.idx) + '_log.txt 2>&1'
             print("Execute cmd.")
             print(cmd)
@@ -128,6 +129,7 @@ class CommonConfig:
                  step_size,
                  ratio,
                  algorithm,
+                 write_to_file=False,
                  epoch_start=0,
                  train_mode='local',
                  use_cuda=True,
@@ -155,6 +157,7 @@ class CommonConfig:
         self.master_listen_port_base = master_listen_port_base
         self.recoder = summary_writer
         self.project_dir = project_dir
+        self.write_to_file=write_to_file
 
 
 class ClientConfig:

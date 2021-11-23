@@ -31,11 +31,13 @@ if __name__ == "__main__":
     while True:
         raw_data = s.recvfrom(HEADER_BYTE + DATA_BYTE)[0]
         nga_header = NGAHeader(raw_data[:HEADER_BYTE])
-        nga_payload = NGAPayload(raw_data[HEADER_BYTE:])
-        print("Protocol: {} {}->{}".format(nga_header.protocol, nga_header.src_address, nga_header.dst_address))
         print("Workerid and sequenceid: {} {}".format(nga_header.workermap, nga_header.sequenceid))
+        if nga_header.sequenceid == -1:
+            break
+        nga_payload = NGAPayload(raw_data[HEADER_BYTE:])
+        # print("Protocol: {} {}->{}".format(nga_header.protocol, nga_header.src_address, nga_header.dst_address))
         print("Payload:")
         for index, d in enumerate(nga_payload.data):
             print(index, d)
-        tensor = torch.Tensor(nga_payload.data)
-        print(tensor)
+        # tensor = torch.Tensor(nga_payload.data)
+        # print(tensor)
