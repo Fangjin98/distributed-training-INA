@@ -98,7 +98,7 @@ class NGAHeader(Structure):
         except Exception as e:
             self.protocol = str(self.protocol_num)
         self.workermap = struct.unpack("I", self.worker_map)[0]
-        self.sequenceid = struct.unpack("I", self.sequence_id)[0]
+        self.sequenceid = struct.unpack("i", self.sequence_id)[0]
 
 
 class NGAPayload(Structure):

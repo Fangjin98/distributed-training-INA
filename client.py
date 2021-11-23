@@ -94,6 +94,11 @@ def main():
     local_model.to(device)
     epoch_lr = args.lr
     local_steps, compre_ratio = 50, 1
+
+    data_manager = DataManager(src_ip=args.client_nic_ip,
+                               dst_ip=args.master_nic_ip,
+                               interface='eno5')
+
     for epoch in range(1, 1 + args.epoch):
         if epoch > 1 and epoch % 1 == 0:
             epoch_lr = max((args.decay_rate * epoch_lr, args.min_lr))
@@ -126,10 +131,7 @@ def main():
         send_time = time.time() - start_time
         print("Socket send time: ", send_time)
 
-        data_manager = DataManager(src_ip=args.client_nic_ip,
-                                   dst_ip=args.master_nic_ip,
-                                   data=local_para.detach().tolist(),
-                                   interface='eno5')
+        data_manager.update_data(local_para.detach().tolist())
         t1 = Thread(target=data_manager.send_data, args=(int(args.idx), 1, 2))
         t1.start()
 

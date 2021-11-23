@@ -67,6 +67,8 @@ def get_data_socket(conn):
 
 
 def float_to_int(num_list):
+    if num_list is None:
+        return
     scale_factor = 10000
     res = []
     for num in num_list:

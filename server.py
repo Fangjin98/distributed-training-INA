@@ -7,9 +7,12 @@ from re import L
 import numpy as np
 import torch
 from config import *
+from header_config import NGA_TYPE
 from utils.comm_utils import *
 from utils import datasets, models
 from utils.training_utils import test
+from utils.NGAPacket import *
+from utils.comm_utils import *
 
 # init parameters
 parser = argparse.ArgumentParser(description='Distributed Client')
@@ -29,19 +32,16 @@ parser.add_argument('--action_num', type=int, default=9)
 parser.add_argument('--worker_num', type=int, default=5)
 parser.add_argument('--use_cuda', action="store_false", default=True)
 parser.add_argument('--ip', type=str, default='127.0.0.1')
+parser.add_argument('--nic_ip', type=str, default='127.0.0.1')
 args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 device = torch.device("cuda" if args.use_cuda and torch.cuda.is_available() else "cpu")
 
-global_is_end = 0
-
 
 def main():
     offset = random.randint(0, 20) * 20
     print(offset)
-
-    server_ip = args.ip
 
     common_config = CommonConfig('CIFAR10',
                                  args.model,
@@ -79,11 +79,13 @@ def main():
             Worker(config=ClientConfig(idx=i,
                                        client_host=worker_config["host"],
                                        client_ip=worker_config["ip"],
-                                       client_port=worker_config["port"],
+                                       client_nic_ip=worker_config["nic_ip"],
+                                       ssh_port=worker_config["ssh_port"],
                                        client_user=worker_config["user"],
                                        client_pwd=worker_config['pwd'],
-                                       master_ip=server_ip,
+                                       master_ip=args.ip,
                                        master_port=common_config.master_listen_port_base + i,
+                                       master_nic_ip=args.nic_ip,
                                        custom=custom),
                    common_config=common_config,
                    user_name=worker_config['name'],
@@ -113,62 +115,61 @@ def main():
     test_loader = datasets.create_dataloaders(test_dataset, batch_size=128, shuffle=False)
 
     total_time = 0.0
-    # local_steps_list=[50,40,50,30,50,40,30,50,40,30]
-    # compre_ratio_list=[0.8,0.7,0.8,0.6,0.8,0.7,0.6,0.8,0.7,0.6]
-    local_steps_list = [50, 50, 50, 50, 50, 50, 50, 50, 50, 50]
-    compre_ratio_list = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    computation_resource = [9, 3, 5, 1, 4, 6, 4, 1, 4, 7]
-    total_resource = 0.0
-    bandwith_resource = [8, 7, 7, 6, 9, 5, 3, 3, 5, 4]
-    total_bandwith = 0.0
-    # computation_resource,bandwith_resource=random_RC(10)
+    try:
+        nic_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, NGA_TYPE)
+    except OSError as e:
+        print(e)
+        sys.exit(1)
+    else:
+        nic_socket.bind((args.nic_ip, 0))
 
-    # local_steps,compre_ratio=40,0.5
     for epoch_idx in range(1, 1 + common_config.epoch):
-
-        # TODO: modify get locat_para from nic not workers
-
         print("get begin")
-        try:
-            communication_parallel(worker_list, action="get_model")
-            #  communication_parallel(worker_list, action="get_time")
-        except Exception as e:
-            for worker in worker_list:
-                worker.socket.shutdown(2)
-            return
-        else:
-            print("get end")
+        communication_parallel(worker_list, action="get_model")
+        #  communication_parallel(worker_list, action="get_time")
+        print("get end")
+
+        para = get_data_from_nic(nic_socket)
+        print(para)
 
         global_para = torch.nn.utils.parameters_to_vector(global_model.parameters()).clone().detach()
         global_para = aggregate_model(global_para, worker_list, args.step_size)
-
-        # with open('data/para_epoch' + str(epoch_idx), 'w') as f:
-        #     for para in global_para.data:
-        #         f.write(str(float(para)))
-        #         f.write('\n')
+        print(global_para)
 
         print("send begin")
-        try:
-            communication_parallel(worker_list, action="send_model", data=global_para)
-        except Exception as e:
-            for worker in worker_list:
-                worker.socket.shutdown(2)
-            return
-        else:
-            print("send end")
+        communication_parallel(worker_list, action="send_model", data=global_para)
+        print("send end")
 
         torch.nn.utils.vector_to_parameters(global_para, global_model.parameters())
-
         test_loss, acc = test(global_model, test_loader, device, model_type=args.model)
         common_config.recoder.add_scalar('Accuracy/average', acc, epoch_idx)
         common_config.recoder.add_scalar('Test_loss/average', test_loss, epoch_idx)
         print("Epoch: {}, accuracy: {}, test_loss: {}\n".format(epoch_idx, acc, test_loss))
-
         common_config.recoder.add_scalar('Accuracy/average_time', acc, total_time)
         common_config.recoder.add_scalar('Test_loss/average_time', test_loss, total_time)
 
     for worker in worker_list:
         worker.socket.shutdown(2)
+
+
+def get_data_from_nic(s):
+    print("Get data from nic {}...".format(args.nic_ip))
+    recv_data = []
+    start_time = time.time()
+
+    while True:
+        raw_data = s.recvfrom(HEADER_BYTE + DATA_BYTE)[0]
+        nga_header = NGAHeader(raw_data[:HEADER_BYTE])
+        print("Workerid and sequenceid: {} {}".format(nga_header.workermap, nga_header.sequenceid))
+        if nga_header.sequenceid == -1:
+            break
+        nga_payload = NGAPayload(raw_data[HEADER_BYTE:])
+        recv_data += nga_payload.data
+
+    total_time = time.time() - start_time
+    print("END: get from nic.")
+    print("Get time: {}".format(total_time))
+    return torch.Tensor(recv_data)
 
 
 def aggregate_model_nic(local_para, para_list, step_size):
@@ -229,7 +230,6 @@ def get_time(config, socket):
 
 
 def get_compressed_model_top(config, socket, nelement):
-    # start_time = time.time()
     print('Get compressed model')
     try:
         received_para = get_data_socket(socket)

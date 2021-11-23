@@ -31,13 +31,11 @@ def check_pkt(pkt):
 
 
 class DataManager:
-    def __init__(self, src_ip, dst_ip, data, interface='eth0'):
+    def __init__(self, src_ip, dst_ip, data=None, interface='eth0'):
         self.src_ip = src_ip
         self.dst_ip = dst_ip
         self.data = float_to_int(data)
         self.iface = my_get_if(interface)
-        print(self.data[0])
-        print("datamanager init done.")
 
     def get_data(self, fliter=None):
         return sniff(iface=self.iface, filter=fliter, prn=lambda x: check_pkt(x))
@@ -53,43 +51,25 @@ class DataManager:
         else:
             start_time = time.time()
             data_num = len(self.data)
-            for i in range(mod(data_num, DATA_NUM)):
+            for i in range(DATA_NUM-mod(data_num, DATA_NUM)):
                 self.data.append(int(0).to_bytes(4, byteorder='little', signed=True))
             for i, index in enumerate(range(0, len(self.data), DATA_NUM)):
                 left = index
                 nga = struct.pack(
                     'IBBBBI', worker_id, degree, 0, 0, switch_id, i
                 )
-                for d in self.data[left:left+DATA_NUM]:
+                for d in self.data[left:left + DATA_NUM]:
                     nga += d
                 s.sendto(nga, (self.dst_ip, 0))
+            nga_end = struct.pack(
+                'IBBBBi', worker_id, degree, 0, 0, switch_id, -1
+            )
+            s.sendto(nga_end, (self.dst_ip, 0))
             total_time = time.time() - start_time
 
         print("END: send to nic.")
         print("Total time: {}.".format(total_time))
 
     def update_data(self, new_data):
-        self.data = new_data
+        self.data = float_to_int(new_data)
 
-    # def _partition_data(self, worker_id, switch_id, degree):
-    #     packet_list = []
-    #     for i, index in enumerate(range(0, len(self.data), DATA_NUM)):
-    #         left = index
-    #         right = index + DATA_NUM if (index + DATA_NUM <= len(self.data)) else len(self.data)
-    #
-    #         args = ["d00", "d01", "d02", "d03", "d04", "d05", "d06", "d07", "d08", "d09", "d10", "d11", "d12", "d13",
-    #                 "d14", "d15", "d16", "d17", "d18", "d19", "d20", "d21", "d22", "d23", "d24", "d25", "d26", "d27",
-    #                 "d28", "d29", "d30", "d31"]
-    #
-    #         packet_list.append(
-    #             Ether(src=get_if_hwaddr(self.iface), dst='ff:ff:ff:ff:ff:ff') /
-    #             IP(src=self.src_ip, dst=self.dst_ip, proto=NGA_TYPE) /
-    #             NGA(worker_map=worker_id,
-    #                 aggregation_degree=degree,
-    #                 timestamp=i,
-    #                 agg_index=i,
-    #                 sequence_id=i,
-    #                 switch_id=switch_id) /
-    #             NGAData(**dict(zip(args, self.data[left:right])))
-    #         )
-    #     return packet_list
