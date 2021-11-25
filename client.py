@@ -20,7 +20,7 @@ parser.add_argument('--master_ip', type=str, default="127.0.0.1",
                     help='IP address for controller or ps')
 parser.add_argument('--master_port', type=int, default=58000, metavar='N',
                     help='')
-parser.add_argument('--master_nic_ip',type=str, default="127.0.0.1")
+parser.add_argument('--master_nic_ip', type=str, default="127.0.0.1")
 parser.add_argument('--client_ip', type=str, default='127.0.0.1')
 parser.add_argument('--client_nic_ip', type=str, default='127.0.0.1')
 parser.add_argument('--dataset', type=str, default='MNIST')
@@ -117,7 +117,6 @@ def main():
         train_time = time.time() - start_time
         train_time = train_time / local_steps
         print("train time: ", train_time)
-        print(train_time / computation)
         test_loss, acc = test(local_model, test_loader, device, model_type=args.model)
         recorder.add_scalar('acc_worker-' + str(args.idx), acc, epoch)
         recorder.add_scalar('test_loss_worker-' + str(args.idx), test_loss, epoch)
@@ -133,6 +132,7 @@ def main():
 
         data_manager.update_data(local_para.detach().tolist())
         t1 = Thread(target=data_manager.send_data, args=(int(args.idx), 1, 2))
+        # t1 = Thread(target=data_manager.fast_send_data, args=(int(args.idx), 1, 2, 1000000))
         t1.start()
 
         print("get begin")
