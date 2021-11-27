@@ -9,13 +9,19 @@ from utils.comm_utils import *
 script_path_of_host = {
     "edge401": '/home/jfang/.conda/envs/fj/bin/python3',
     "edge404": '/data/yxu/software/Anaconda/envs/fj/bin/python3',
-    "server05": '/usr/bin/python3'
+    "server05": '/usr/bin/python3',
+    "server01": '/home/sdn/anaconda3/envs/fj/bin/python3',
+    "server02": '/home/sdn/anaconda3/envs/fj/bin/python3',
+    "server08": '/home/sdn/anaconda3/envs/fj/bin/python3'
 }
 
 work_dir_of_host = {
     "edge401": '/home/jfang/distributed_PS_ML',
     "edge404": '/home/jfang/distributed_PS_ML',
-    "server05": '/home/sdn/fj/distributed_PS_ML'
+    "server05": '/home/sdn/fj/distributed_PS_ML',
+    "server01": '/home/sdn/fj/distributed_PS_ML',
+    "server02": '/home/sdn/fj/distributed_PS_ML',
+    "server08": '/home/sdn/fj/distributed_PS_ML'
 }
 
 
@@ -34,13 +40,11 @@ class Worker:
         self.socket = None
         self.train_info = None
         self.para_nums = para_nums
-        self.socket = None
         if self.config.client_ip == '127.0.0.1':
             self.__start_local_worker_process()
         else:
             t = Thread(target=self.__start_remote_worker_process)
             t.start()
-            # self.__start_remote_worker_process()
 
     def __start_local_worker_process(self):
         cmd = 'cd ' + os.getcwd() + ';nohup ' + 'python3' + ' -u client.py ' + \
@@ -110,7 +114,9 @@ class Worker:
         send_data_socket(data, self.socket)
 
     def send_init_config(self):
-        print(self.config.client_ip, self.config.master_port)
+        for arg in vars(self.config):
+            print(arg, ":", getattr(self.config, arg))
+
         self.socket = connect_send_socket(self.config.client_ip, int(self.config.master_port))
         send_data_socket(self.config, self.socket)
 

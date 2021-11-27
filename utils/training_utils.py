@@ -72,6 +72,4 @@ def test(model, data_loader, device=torch.device("cpu"), model_type=None):
     test_loss /= len(data_loader.dataset)
     test_accuracy = np.float(1.0 * correct / len(data_loader.dataset))
 
-    # TODO: Record
-
     return test_loss, test_accuracy

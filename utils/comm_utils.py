@@ -7,6 +7,8 @@ import threading
 from time import sleep
 import time
 
+from header_config import DATA_NUM, DATA_BYTE
+
 
 def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -21,10 +23,8 @@ def killport(port):
 
 def connect_send_socket(dst_ip, dst_port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # s.settimeout(120)
 
     while s.connect_ex((dst_ip, dst_port)) != 0:
-        # print(1)
         sleep(0.5)
 
     return s
@@ -43,7 +43,6 @@ def connect_get_socket(listen_ip, listen_port):
             print("**OSError**", listen_ip, listen_port)
             sleep(0.7)
             killport(listen_port)
-            # print(listen_port)
             if time.time() - start_time > 30:
                 sys.exit(0)
     s.listen()
@@ -63,8 +62,15 @@ def get_data_socket(conn):
     data_len = struct.unpack(">I", conn.recv(4))[0]
     data = conn.recv(data_len, socket.MSG_WAITALL)
     recv_data = pickle.loads(data)
-
     return recv_data
+
+
+def get_data_from_nic(s, buffer, nic_ip=None):
+    if nic_ip:
+        print("Get data from nic {}...".format(nic_ip))
+    while True:
+        raw_data = s.recvfrom(DATA_NUM + DATA_BYTE)[0]
+        buffer.append(raw_data)
 
 
 def float_to_int(num_list):
@@ -98,4 +104,3 @@ class RecvThread(threading.Thread):
     def get_result(self):
         threading.Thread.join(self)
         return self.result
-

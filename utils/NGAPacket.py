@@ -1,8 +1,6 @@
 import struct
-from ctypes import Structure, c_ubyte, c_ushort, c_uint, c_ulong, c_byte, c_int
-import socket
+from ctypes import Structure, c_ubyte, c_ushort, c_uint, c_byte, c_int
 from scapy.all import *
-from scapy.layers.inet import IP
 from header_config import *
 from utils.comm_utils import int_to_float
 
@@ -116,6 +114,6 @@ class NGAPayload(Structure):
             self.data.append(self.payload[i])
         self.data = int_to_float(self.data)
 
-
-bind_layers(IP, NGA, proto=NGA_TYPE)
-bind_layers(NGA, NGAData)
+#
+# bind_layers(IP, NGA, proto=NGA_TYPE)
+# bind_layers(NGA, NGAData)
