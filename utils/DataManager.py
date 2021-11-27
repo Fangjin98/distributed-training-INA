@@ -52,46 +52,56 @@ class DataManager:
         tail = mod(total_len, self.thread_num)
         thread_res = []
         start_time = time.time()
+        count = self._send_data(worker_id, switch_id, degree, 0, total_len)
+        # if total_len <= DATA_NUM * step:
+        #     res = self.thread_pool.submit(self._send_data,
+        #                                   worker_id,
+        #                                   switch_id,
+        #                                   degree,
+        #                                   0,
+        #                                   total_len,
+        #                                   sequence_num,
+        #                                   True)
+        #     thread_res.append(res)
+        # else:  # each thread sends DATA_NUM*step number of packets.
+        #     for i in range(0, total_len, DATA_NUM * step):
+        #         if offset + DATA_NUM * step > total_len:
+        #             break
+        #         res = self.thread_pool.submit(self._send_data,
+        #                                       worker_id,
+        #                                       switch_id,
+        #                                       degree,
+        #                                       offset,
+        #                                       DATA_NUM * step,
+        #                                       sequence=sequence_num)
+        #         thread_res.append(res)
+        #         offset += DATA_NUM * step
+        #         sequence_num += step
+        #     res = self.thread_pool.submit(self._send_data,
+        #                                   worker_id,
+        #                                   switch_id,
+        #                                   degree,
+        #                                   offset,
+        #                                   tail,
+        #                                   sequence_num,
+        #                                   True)
+        #     thread_res.append(res)
+        # print("Num of sockets: {}".format(len(thread_res)))
 
-        if total_len <= DATA_NUM * step:
-            self.send_data(worker_id, switch_id, degree)
-        else:  # each thread sends DATA_NUM*step number of packets.
-            for i in range(0, total_len, DATA_NUM * step):
-                if offset + DATA_NUM * step > total_len:
-                    break
-                res = self.thread_pool.submit(self._send_data,
-                                              worker_id,
-                                              switch_id,
-                                              degree,
-                                              offset,
-                                              DATA_NUM * step,
-                                              sequence=sequence_num)
-                offset += DATA_NUM * step
-                sequence_num += step
-                # thread_res.append(res)
-            res = self.thread_pool.submit(self._send_data,
-                                          worker_id,
-                                          switch_id,
-                                          degree,
-                                          offset,
-                                          tail,
-                                          sequence_num,
-                                          True)
-            # thread_res.append(res)
-
+        # is_done = False
         # while True:
-        #     done = True
         #     for t in thread_res:
-        #         # print(t.exception())
-        #         done = t.done()
-        #     if done:
-        #         break
+        #         is_done = t.done()
+        #         if is_done is False:
+        #             break
+        #     if is_d
+        #     break
+
         total_time = time.time() - start_time
         print("END: send to nic.")
-        print("Total time: {}.".format(total_time))
+        print("Total time: {}, byte count: {}.".format(total_time, count))
 
     def send_data(self, worker_id, switch_id, degree):
-        print("send to nic...")
         start_time = time.time()
         self._send_data(worker_id, switch_id, degree, 0, len(self.data), True)
         total_time = time.time() - start_time
@@ -99,10 +109,10 @@ class DataManager:
         print("Total time: {}.".format(total_time))
 
     def _send_data(self, worker_id, switch_id, degree, offset, step, sequence=0, end=False):
-        # print("{} is sending data...".format(threading.current_thread().name))
         s = socket.socket(socket.AF_INET, socket.SOCK_RAW, NGA_TYPE)
         left = 0
         pkt_id = 0
+        count = 0
         for i, index in enumerate(range(offset, offset + step, DATA_NUM)):
             left = index
             pkt_id = i
@@ -113,24 +123,26 @@ class DataManager:
             )
             for d in self.data[left:left + DATA_NUM]:
                 nga += d
-            s.sendto(nga, (self.dst_ip, 0))
-
+                count += 1
+            s.sendto(nga,(self.dst_ip,0))
         if mod(step, DATA_NUM) != 0:  # tail packets
             nga = struct.pack(
                 'IBBBBi', worker_id, degree, 0, 0, switch_id, sequence + pkt_id
             )
             for d in self.data[left:]:
                 nga += d
+                count += 1
             for i in range(DATA_NUM - mod(step, DATA_NUM)):
                 nga += int(0).to_bytes(4, byteorder='little', signed=True)
+                # count += 1
             s.sendto(nga, (self.dst_ip, 0))
 
         if end is True:
             nga_end = struct.pack(
                 'IBBBBi', worker_id, degree, 0, 0, switch_id, -1
             )
-            s.sendto(nga_end, (self.dst_ip, 0))
-        # print("{} is done".format(threading.current_thread().name))
+            s.sendto(nga_end,(self.dst_ip,0))
+        return count
 
     def update_data(self, new_data):
         self.data = float_to_int(new_data)

@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 import torch
 import torch.optim as optim
@@ -38,15 +39,13 @@ parser.add_argument('--use_cuda', action="store_false", default=True)
 parser.add_argument('--adaptive', action="store_false", default=False)
 parser.add_argument('--visible_cuda', type=str, default='-1')
 parser.add_argument('--algorithm', type=str, default='proposed')
-parser.add_argument('--write_to_file', type=bool, default=False)
+parser.add_argument('--write_to_file', default=False)
 
 args = parser.parse_args()
 
-if args.visible_cuda == '-1':
-    os.environ['CUDA_VISIBLE_DEVICES'] = str((int(args.idx)) % 2 + 2)
-else:
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.visible_cuda
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 device = torch.device("cuda" if args.use_cuda and torch.cuda.is_available() else "cpu")
+print(device)
 
 
 def write_tensor(filename, tensor):
@@ -62,14 +61,10 @@ def main():
     master_socket = connect_get_socket(args.client_ip, args.master_port)
     config_received = get_data_socket(master_socket)
 
-    print(config_received)
+    # print(config_received)
 
     for k, v in config_received.__dict__.items():
         setattr(client_config, k, v)
-    computation = client_config.custom["computation"]
-    dynamics = client_config.custom["dynamics"]
-
-    # init config
     args.local_ip = client_config.client_ip
 
     for arg in vars(args):
@@ -81,9 +76,8 @@ def main():
     torch.nn.utils.vector_to_parameters(client_config.para, local_model.parameters())
     local_model.to(device)
     para_nums = torch.nn.utils.parameters_to_vector(local_model.parameters()).nelement()
-
+    print("Len of tensor: {}".format(para_nums))
     print(args.batch_size, args.ratio)
-    # create dataset
     print(len(client_config.custom["train_data_idxes"]))
     train_dataset, test_dataset = datasets.load_datasets(args.dataset)
     train_loader = datasets.create_dataloaders(train_dataset, batch_size=args.batch_size,
@@ -95,13 +89,13 @@ def main():
     epoch_lr = args.lr
     local_steps, compre_ratio = 50, 1
 
-    data_manager = DataManager(src_ip=args.client_nic_ip,
-                               dst_ip=args.master_nic_ip,
-                               interface='eno5')
+    # data_manager = DataManager(src_ip=args.client_nic_ip,
+    #                            dst_ip=args.master_nic_ip,
+    #                            interface='eno5',
+    #                            thread_num=8)
 
     for epoch in range(1, 1 + args.epoch):
-        if epoch > 1 and epoch % 1 == 0:
-            epoch_lr = max((args.decay_rate * epoch_lr, args.min_lr))
+        epoch_lr = max((args.decay_rate * epoch_lr, args.min_lr))
         print("model-{}-epoch-{} lr: {}, ratio: {} ".
               format(args.model, epoch, epoch_lr, args.ratio))
         start_time = time.time()
@@ -109,14 +103,13 @@ def main():
         train_loss = train(local_model, train_loader, optimizer, local_iters=local_steps, device=device,
                            model_type=args.model)
         local_para = torch.nn.utils.parameters_to_vector(local_model.parameters()).clone().detach()
-
-        if args.write_to_file:
-            write_tensor("data/log/tensor/model_{}_epoch_{}_worker_{}".
-                         format(args.model, epoch, args.idx), local_para)
-
         train_time = time.time() - start_time
-        train_time = train_time / local_steps
         print("train time: ", train_time)
+
+        # if args.write_to_file:
+        #     write_tensor("data/log/tensor/model_{}_epoch_{}_worker_{}".
+        #                  format(args.model, epoch, args.idx), local_para)
+
         test_loss, acc = test(local_model, test_loader, device, model_type=args.model)
         recorder.add_scalar('acc_worker-' + str(args.idx), acc, epoch)
         recorder.add_scalar('test_loss_worker-' + str(args.idx), test_loss, epoch)
@@ -124,25 +117,23 @@ def main():
         print("after aggregation, epoch: {}, train loss: {}, test loss: {}, test accuracy: {}".format(epoch, train_loss,
                                                                                                       test_loss, acc))
         print("send para")
-
         start_time = time.time()
-        send_data_socket(local_para, master_socket)
+        print(len(local_para))
+        # data_manager.update_data(local_para.detach().tolist())
+        # data_manager.fast_send_data(int(args.idx), 1, 2, 100000)
+        send_data_socket(local_para.cpu(), master_socket)
         send_time = time.time() - start_time
-        print("Socket send time: ", send_time)
-
-        data_manager.update_data(local_para.detach().tolist())
-        t1 = Thread(target=data_manager.send_data, args=(int(args.idx), 1, 2))
-        # t1 = Thread(target=data_manager.fast_send_data, args=(int(args.idx), 1, 2, 1000000))
-        t1.start()
+        print("Total time: ", send_time)
 
         print("get begin")
-        local_para = get_data_socket(master_socket)
+        local_para = get_data_socket(master_socket).cuda()
         print("get end")
         local_para.to(device)
         torch.nn.utils.vector_to_parameters(local_para, local_model.parameters())
 
     master_socket.shutdown(2)
     master_socket.close()
+    sys.exit(0)
 
 
 if __name__ == '__main__':
