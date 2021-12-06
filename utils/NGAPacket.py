@@ -61,8 +61,7 @@ class NGAData(Packet):
 
 class NGAHeader(Structure):
     _fields_ = [
-        ("ihl", c_ubyte, 4),
-        ("version", c_ubyte, 4),
+        ("version_ihl", c_ubyte),
         ("tos", c_ubyte),
         ("len", c_ushort),
         ("id", c_ushort),
@@ -72,12 +71,12 @@ class NGAHeader(Structure):
         ("sum", c_ushort),
         ("src", c_uint),
         ("dst", c_uint),
-        ("worker_map", c_byte * 4),
-        ("degree", c_byte),
-        ("overflow_isack_ecn_resend_time", c_byte),
-        ("index", c_byte),
-        ("switch_id", c_byte),
-        ("sequence_id", c_byte * 4)
+        ("worker_map", c_byte*4),
+        ("degree", c_ubyte),
+        ("overflow_isack_ecn_resend_time", c_ubyte),
+        ("index", c_byte*4),
+        ("switch_id", c_ubyte),
+        ("sequence_id", c_byte*4)
     ]
 
     def __new__(self, socket_buffer=None):
@@ -95,8 +94,12 @@ class NGAHeader(Structure):
             self.protocol = self.protocol_map[self.protocol_num]
         except Exception as e:
             self.protocol = str(self.protocol_num)
-        self.workermap = struct.unpack("I", self.worker_map)[0]
-        self.sequenceid = struct.unpack("i", self.sequence_id)[0]
+
+        self.workermap = struct.unpack(">I", self.worker_map)
+        self.sequenceid = struct.unpack(">I", self.sequence_id)
+        self.switchid = self.switch_id
+        self.aggregationdegree = self.degree
+        self.aggindex = struct.unpack(">I", self.index)
 
 
 class NGAPayload(Structure):
@@ -113,7 +116,3 @@ class NGAPayload(Structure):
         for i in range(DATA_NUM):
             self.data.append(self.payload[i])
         self.data = int_to_float(self.data)
-
-#
-# bind_layers(IP, NGA, proto=NGA_TYPE)
-# bind_layers(NGA, NGAData)

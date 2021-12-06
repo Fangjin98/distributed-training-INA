@@ -41,7 +41,7 @@ class DataManager:
 
     def fast_send_data(self, worker_id, switch_id, degree, send_step=10000):
         """
-        Using multi-threads to send packets
+        Using multi-threads to send packets (Deprecated)
         Returns: None
         """
         print("send to nic...")
@@ -116,19 +116,34 @@ class DataManager:
         for i, index in enumerate(range(offset, offset + step, DATA_NUM)):
             left = index
             pkt_id = i
+            aggindex = mod((sequence + pkt_id), 16384)
             if left + DATA_NUM > offset + step:
                 break
             nga = struct.pack(
-                'IBBBBi', worker_id, degree, 0, 0, switch_id, sequence + pkt_id
+                '!IbbIbI',
+                worker_id,
+                degree,
+                0,
+                aggindex,
+                switch_id,
+                sequence + pkt_id
             )
             for d in self.data[left:left + DATA_NUM]:
                 nga += d
                 count += 1
-            s.sendto(nga,(self.dst_ip,0))
+            s.sendto(nga, (self.dst_ip, 0))
         if mod(step, DATA_NUM) != 0:  # tail packets
+            aggindex = mod((sequence + pkt_id), 16384)
             nga = struct.pack(
-                'IBBBBi', worker_id, degree, 0, 0, switch_id, sequence + pkt_id
+                '!IbbIbI',
+                worker_id,
+                degree,
+                0,
+                aggindex,
+                switch_id,
+                sequence + pkt_id
             )
+            print(nga)
             for d in self.data[left:]:
                 nga += d
                 count += 1
@@ -139,9 +154,14 @@ class DataManager:
 
         if end is True:
             nga_end = struct.pack(
-                'IBBBBi', worker_id, degree, 0, 0, switch_id, -1
+                '!IbbIbI', worker_id,
+                degree,
+                0,
+                0,
+                switch_id,
+                0
             )
-            s.sendto(nga_end,(self.dst_ip,0))
+            s.sendto(nga_end, (self.dst_ip, 0))
         return count
 
     def update_data(self, new_data):
