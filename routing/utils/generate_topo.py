@@ -8,6 +8,7 @@ class Topo(object):
 
     def add_edge(self, src, dst, weight):
         self.topo[src].append({dst: weight})
+        self.topo[dst].append({src: weight})
 
     def add_edges(self, edge_list):
         for e in edge_list:
@@ -43,8 +44,67 @@ def topo_25_worker_4_switch(host_set, switch_set):
     return topo
 
 
+def topo_9_worker_4_switch():
+    topo = Topo(defaultdict(list))
+    topo.add_edges([('s1', 's3', 1), ('s1', 's4', 1), ('s2', 's4', 1), ('s2', 's3', 1)])
+    topo.add_edges([('s1', 'h1', 1), ('s1', 'h2', 1), ('s1', 'h3', 1), ('s1', 'h4', 1), ('s2', 'h5', 1)])
+    topo.add_edges([('s2', 'h6', 1), ('s2', 'h7', 1), ('s2', 'h8', 1), ('s2', 'h9', 1)])
+    return topo
+
+
+def topo_7_worker_4_switch():
+    topo = Topo(defaultdict(list))
+    topo.add_edges([('s1', 's3', 1), ('s1', 's4', 1), ('s2', 's4', 1), ('s2', 's3', 1)])
+    topo.add_edges([('s1', 'h1', 1), ('s1', 'h2', 1), ('s1', 'h3', 1), ('s2', 'h4', 1)])
+    topo.add_edges([('s2', 'h5', 1), ('s2', 'h6', 1), ('s2', 'h7', 1)])
+    return topo
+
+
+def topo_11_worker_4_switch():
+    topo = Topo(defaultdict(list))
+    topo.add_edges([('s1', 's3', 1), ('s1', 's4', 1), ('s2', 's4', 1), ('s2', 's3', 1)])
+    topo.add_edges(
+        [('s1', 'h1', 1), ('s1', 'h2', 1), ('s1', 'h3', 1), ('s1', 'h4', 1), ('s1', 'h5', 1), ('s2', 'h6', 1)])
+    topo.add_edges([('s2', 'h7', 1), ('s2', 'h8', 1), ('s2', 'h9', 1), ('s2', 'h10', 1), ('s2', 'h11', 1)])
+    return topo
+
+
+def topo_13_worker_4_switch():
+    topo = Topo(defaultdict(list))
+    topo.add_edges([('s1', 's3', 1), ('s1', 's4', 1), ('s2', 's4', 1), ('s2', 's3', 1)])
+    topo.add_edges(
+        [('s1', 'h1', 1), ('s1', 'h2', 1), ('s1', 'h3', 1), ('s1', 'h4', 1), ('s1', 'h5', 1), ('s1', 'h6', 1),
+         ('s2', 'h7', 1)])
+    topo.add_edges(
+        [('s2', 'h8', 1), ('s2', 'h9', 1), ('s2', 'h10', 1), ('s2', 'h11', 1), ('s2', 'h12', 1), ('s2', 'h13', 1)])
+    return topo
+
+
+def topo_15_worker_4_switch():
+    topo = Topo(defaultdict(list))
+    topo.add_edges([('s1', 's3', 1), ('s1', 's4', 1), ('s2', 's4', 1), ('s2', 's3', 1)])
+    topo.add_edges(
+        [('s1', 'h1', 1), ('s1', 'h2', 1), ('s1', 'h3', 1), ('s1', 'h4', 1), ('s1', 'h5', 1), ('s1', 'h6', 1),
+         ('s1', 'h7', 1), ('s2', 'h8', 1)])
+    topo.add_edges(
+        [('s2', 'h9', 1), ('s2', 'h10', 1), ('s2', 'h11', 1), ('s2', 'h12', 1), ('s2', 'h13', 1), ('s2', 'h14', 1),
+         ('s2', 'h15', 1)])
+    return topo
+
+
 if __name__ == '__main__':
-    my_topo = topo_25_worker_4_switch(host_set=['h' + str(i) for i in range(1, 26)],
-                                      switch_set=['s1', 's2', 's3', 's4'])
+    my_topo = topo_7_worker_4_switch()
     print(my_topo.topo)
-    # generate_json(my_topo.topo, '../data/topo/topo.json')
+    generate_json(my_topo.topo, '../data/topo/topo_7_workers.json')
+    my_topo = topo_9_worker_4_switch()
+    print(my_topo.topo)
+    generate_json(my_topo.topo, '../data/topo/topo_9_workers.json')
+    my_topo = topo_11_worker_4_switch()
+    print(my_topo.topo)
+    generate_json(my_topo.topo, '../data/topo/topo_11_workers.json')
+    my_topo = topo_13_worker_4_switch()
+    print(my_topo.topo)
+    generate_json(my_topo.topo, '../data/topo/topo_13_workers.json')
+    my_topo = topo_15_worker_4_switch()
+    print(my_topo.topo)
+    generate_json(my_topo.topo, '../data/topo/topo_15_workers.json')

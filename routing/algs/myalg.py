@@ -138,7 +138,8 @@ def solve_lp(worker_num, switch_num,
                           for k in range(ps_num)
                           for m in path_set_index[worker_num + k][j]]) <= band[i] / t
 
-    status = prob.solve(pl.get_solver("CPLEX_PY"))
+    # status = prob.solve(pl.get_solver("CPLEX_PY"))
+    status = prob.solve()
     print('objective =', pl.value(prob.objective))
 
     # f = open(
@@ -219,11 +220,11 @@ def RRIAR(worker_num, switch_num,
     return path_list
 
 
-if __name__ == '__main__':
+def schemes(worker_num):
     switch_set = ['s1', 's2', 's3', 's4']
-    host_set = ['h' + str(i) for i in range(1, 26)]
+    host_set = ['h' + str(i) for i in range(1, worker_num + 1)]
     ps_num = 1
-    topo, link_set = init_topo('../data/topo/topo.json')
+    topo, link_set = init_topo('../data/topo/topo_{}_workers.json'.format(str(worker_num)))
     path_set = defaultdict(dict)
     for h in host_set:
         for s in switch_set:
@@ -234,8 +235,40 @@ if __name__ == '__main__':
                 continue
             paths = get_feasible_path(topo, h, h1)
             path_set[h][h1] = paths
-    band = [10000 for i in range(len(link_set))]
-    capacity = [200 for i in range(len(switch_set))]
-    t = 96
+    for s in switch_set:
+        for s1 in switch_set:
+            if s is s1:
+                continue
+            paths = get_feasible_path(topo, s, s1)
+            path_set[s][s1] = paths
+
+    band = [1000 for i in range(len(link_set))]
+    capacity = [500 for i in range(len(switch_set))]
+    t = 100
     RRIAR(len(host_set) - ps_num, len(switch_set), host_set, switch_set, path_set, link_set, capacity,
-          band, file_name='../data/path.txt')
+          band, file_name='../data/path_{}_workers.txt'.format(str(worker_num)))
+
+
+if __name__ == '__main__':
+    # switch_set = ['s1', 's2', 's3', 's4']
+    # host_set = ['h' + str(i) for i in range(1, 8)]
+    # ps_num = 1
+    # topo, link_set = init_topo('../data/topo/topo_7_workers.json')
+    # path_set = defaultdict(dict)
+    # for h in host_set:
+    #     for s in switch_set:
+    #         paths = get_feasible_path(topo, h, s)
+    #         path_set[h][s] = paths
+    #     for h1 in host_set:
+    #         if h is h1:
+    #             continue
+    #         paths = get_feasible_path(topo, h, h1)
+    #         path_set[h][h1] = paths
+    # band = [500 for i in range(len(link_set))]
+    # capacity = [500 for i in range(len(switch_set))]
+    # t = 100
+    # RRIAR(len(host_set) - ps_num, len(switch_set), host_set, switch_set, path_set, link_set, capacity,
+    #       band, file_name='../data/path_7_workers.txt')
+
+    for i in [7, 9, 11, 13, 15]:
+        schemes(worker_num=i)
