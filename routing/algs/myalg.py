@@ -221,7 +221,7 @@ def RRIAR(worker_num, switch_num,
 
 
 def schemes(worker_num):
-    switch_set = ['s1', 's2', 's3', 's4']
+    switch_set = ['s1', 's2', 's3', 's4','s5','s6']
     host_set = ['h' + str(i) for i in range(1, worker_num + 1)]
     ps_num = 1
     topo, link_set = init_topo('../data/topo/topo_{}_workers.json'.format(str(worker_num)))
@@ -243,7 +243,7 @@ def schemes(worker_num):
             path_set[s][s1] = paths
 
     band = [1000 for i in range(len(link_set))]
-    capacity = [500 for i in range(len(switch_set))]
+    capacity = [400 for i in range(len(switch_set))]
     t = 100
     RRIAR(len(host_set) - ps_num, len(switch_set), host_set, switch_set, path_set, link_set, capacity,
           band, file_name='../data/path_{}_workers.txt'.format(str(worker_num)))
@@ -270,5 +270,5 @@ if __name__ == '__main__':
     # RRIAR(len(host_set) - ps_num, len(switch_set), host_set, switch_set, path_set, link_set, capacity,
     #       band, file_name='../data/path_7_workers.txt')
 
-    for i in [7, 9, 11, 13, 15]:
+    for i in [7, 10, 13, 16, 19]:
         schemes(worker_num=i)
