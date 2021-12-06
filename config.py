@@ -12,6 +12,7 @@ script_path_of_host = {
     "server05": '/usr/bin/python3',
     "server01": '/home/sdn/anaconda3/envs/fj/bin/python3',
     "server02": '/home/sdn/anaconda3/envs/fj/bin/python3',
+    "server03": '/usr/bin/python3',
     "server08": '/home/sdn/anaconda3/envs/fj/bin/python3'
 }
 
@@ -21,6 +22,7 @@ work_dir_of_host = {
     "server05": '/home/sdn/fj/distributed_PS_ML',
     "server01": '/home/sdn/fj/distributed_PS_ML',
     "server02": '/home/sdn/fj/distributed_PS_ML',
+    "server03": '/home/sdn/fj/distributed_PS_ML',
     "server08": '/home/sdn/fj/distributed_PS_ML'
 }
 
@@ -40,15 +42,14 @@ class Worker:
         self.socket = None
         self.train_info = None
         self.para_nums = para_nums
-        if self.config.client_ip == '127.0.0.1':
-            self.__start_local_worker_process()
-        else:
-            t = Thread(target=self.__start_remote_worker_process)
-            t.start()
 
-    def __start_local_worker_process(self):
-        cmd = 'cd ' + os.getcwd() + ';nohup ' + 'python3' + ' -u client.py ' + \
+        cmd = ' cd ' + work_dir_of_host[self.config.client_host] + '; sudo ' + script_path_of_host[
+            self.config.client_host] + ' -u client.py ' + \
+              ' --master_ip ' + str(self.config.master_ip) + \
               ' --master_port ' + str(self.config.master_port) + \
+              ' --master_nic_ip ' + str(self.config.master_nic_ip) + \
+              ' --client_ip ' + str(self.config.client_ip) + \
+              ' --client_nic_ip ' + str(self.config.client_nic_ip) + \
               ' --idx ' + str(self.idx) + \
               ' --dataset ' + str(self.common_config.dataset) + \
               ' --model ' + str(self.common_config.model) + \
@@ -59,13 +60,21 @@ class Worker:
               ' --decay_rate ' + str(self.common_config.decay_rate) + \
               ' --algorithm ' + self.common_config.algorithm + \
               ' --step_size ' + str(self.common_config.step_size) + \
-              ' > data/log/client_' + str(self.idx) + '_log.txt 2>&1 &'
+              ' --write_to_file ' + str(self.common_config.write_to_file) + \
+              ' > data/log/client_' + str(self.idx) + '_log.txt 2>&1'
 
+        if self.config.client_ip == '127.0.0.1':
+            t = Thread(target=self.__start_local_worker_process, args=(cmd,))
+            t.start()
+        else:
+            t = Thread(target=self.__start_remote_worker_process, args=(cmd,))
+            t.start()
+
+    def __start_local_worker_process(self, cmd):
         print(cmd)
-
         os.system(cmd)
 
-    def __start_remote_worker_process(self):
+    def __start_remote_worker_process(self,cmd):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
@@ -114,9 +123,6 @@ class Worker:
         send_data_socket(data, self.socket)
 
     def send_init_config(self):
-        for arg in vars(self.config):
-            print(arg, ":", getattr(self.config, arg))
-
         self.socket = connect_send_socket(self.config.client_ip, int(self.config.master_port))
         send_data_socket(self.config, self.socket)
 

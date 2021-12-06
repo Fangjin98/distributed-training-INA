@@ -51,11 +51,13 @@ print(device)
 def write_tensor(filename, tensor):
     t = Thread(target=write_tensor_to_file, args=(filename, tensor))
     t.start()
+    return t
 
 
 def main():
     client_config = ClientConfig()
     recorder = SummaryWriter("log_" + str(client_config.idx))
+    write_t = None
     # receive config
     print(str(args.client_ip), str(args.master_port))
     master_socket = connect_get_socket(args.client_ip, args.master_port)
@@ -83,7 +85,7 @@ def main():
     train_loader = datasets.create_dataloaders(train_dataset, batch_size=args.batch_size,
                                                selected_idxs=client_config.custom["train_data_idxes"])
 
-    test_loader = datasets.create_dataloaders(test_dataset, batch_size=128, shuffle=False)
+    test_loader = datasets.create_dataloaders(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     local_model.to(device)
     epoch_lr = args.lr
@@ -106,9 +108,9 @@ def main():
         train_time = time.time() - start_time
         print("train time: ", train_time)
 
-        # if args.write_to_file:
-        #     write_tensor("data/log/tensor/model_{}_epoch_{}_worker_{}".
-        #                  format(args.model, epoch, args.idx), local_para)
+        if args.write_to_file and epoch == 1:
+            write_t = write_tensor("data/log/tensor/model_{}_epoch_{}_worker_{}".
+                                   format(args.model, epoch, args.idx), local_para)
 
         test_loss, acc = test(local_model, test_loader, device, model_type=args.model)
         recorder.add_scalar('acc_worker-' + str(args.idx), acc, epoch)
@@ -126,13 +128,18 @@ def main():
         print("Total time: ", send_time)
 
         print("get begin")
-        local_para = get_data_socket(master_socket).cuda()
+        if device=='cuda':
+            local_para = get_data_socket(master_socket).cuda()
+        else:
+            local_para = get_data_socket(master_socket)
         print("get end")
         local_para.to(device)
         torch.nn.utils.vector_to_parameters(local_para, local_model.parameters())
 
     master_socket.shutdown(2)
     master_socket.close()
+    if write_t is not None:
+        write_t.join()
     sys.exit(0)
 
 

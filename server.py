@@ -18,7 +18,7 @@ from utils.comm_utils import *
 # init parameters
 parser = argparse.ArgumentParser(description='Distributed Client')
 parser.add_argument('--model', type=str, default='resnet50')
-parser.add_argument('--batch_size', type=int, default=32)
+parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--data_pattern', type=int, default=0)
 parser.add_argument('--weight_decay', type=float, default=0.0)
 parser.add_argument('--gamma', type=float, default=0.95)
@@ -40,10 +40,10 @@ args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 device = torch.device("cuda" if args.use_cuda and torch.cuda.is_available() else "cpu")
 
-
 def main():
     offset = random.randint(0, 20) * 20
     print(offset)
+    config_file="local_worker_config.json"
 
     common_config = CommonConfig('CIFAR10',
                                  args.model,
@@ -59,7 +59,7 @@ def main():
                                  master_listen_port_base=53300+offset
                                  )
 
-    with open("worker_config.json") as json_file:
+    with open(config_file) as json_file:
         workers_config = json.load(json_file)
 
     # global_model = models.create_model_instance(common_config.dataset, common_config.model)
@@ -70,7 +70,7 @@ def main():
     print("Model name: {}".format(common_config.model))
     print("Model Size: {} MB".format(model_size))
 
-    worker_num = min(args.worker_num, len(workers_config['worker_config_list']))
+    worker_num = min(args.worker_num, len(workers_config["worker_config_list"]))
 
     worker_list = []
     for i in range(worker_num):
@@ -122,7 +122,7 @@ def main():
 
     global_model.to(device)
     train_dataset, test_dataset = datasets.load_datasets(common_config.dataset)
-    test_loader = datasets.create_dataloaders(test_dataset, batch_size=128, shuffle=False)
+    test_loader = datasets.create_dataloaders(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     total_time = 0.0
 
