@@ -1,0 +1,26 @@
+{
+  "config": [
+    {
+      "id": "0",
+      "host": "server01",
+      "nic_ip": "172.16.170.1",
+      "ssh_ip": "172.16.150.1",
+      "ssh_port": "6001",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "switch_id": "0",
+      "degree": "2"
+    },
+    {
+      "id": "1",
+      "host": "server02",
+      "nic_ip": "172.16.170.2",
+      "ssh_ip": "172.16.150.2",
+      "ssh_port": "6002",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "switch_id": "0",
+      "degree": "2"
+    }
+  ]
+}
