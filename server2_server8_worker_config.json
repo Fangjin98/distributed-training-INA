@@ -1,0 +1,103 @@
+{
+  "worker_config_list": [
+    {
+      "name": "host0",
+      "host": "server01",
+      "ip": "172.16.150.1",
+      "nic_ip": "172.16.170.1",
+      "ssh_port": "6001",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "computation": 3,
+      "dynamics": 2
+    },
+    {
+      "name": "host1",
+      "host": "server02",
+      "ip": "172.16.150.2",
+      "nic_ip": "172.16.170.2",
+      "ssh_port": "6002",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "computation": 3,
+      "dynamics": 2
+    },
+    {
+      "name": "host3",
+      "host": "server08",
+      "ip": "172.16.150.8",
+      "nic_ip": "172.16.170.8",
+      "ssh_port": "6008",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "computation": 3,
+      "dynamics": 2
+    },
+    {
+      "name": "host4",
+      "host": "server01",
+      "ip": "172.16.150.1",
+      "nic_ip": "172.16.170.1",
+      "ssh_port": "6001",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "computation": 3,
+      "dynamics": 2
+    },
+    {
+      "name": "host5",
+      "host": "server02",
+      "ip": "172.16.150.2",
+      "nic_ip": "172.16.170.2",
+      "ssh_port": "6002",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "computation": 3,
+      "dynamics": 2
+    },
+    {
+      "name": "host6",
+      "host": "server08",
+      "ip": "172.16.150.8",
+      "nic_ip": "172.16.170.8",
+      "ssh_port": "6008",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "computation": 3,
+      "dynamics": 2
+    },
+    {
+      "name": "host7",
+      "host": "server01",
+      "ip": "172.16.150.1",
+      "nic_ip": "172.16.170.1",
+      "ssh_port": "6001",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "computation": 3,
+      "dynamics": 2
+    },
+    {
+      "name": "host8",
+      "host": "server02",
+      "ip": "172.16.150.2",
+      "nic_ip": "172.16.170.2",
+      "ssh_port": "6002",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "computation": 3,
+      "dynamics": 2
+    },
+    {
+      "name": "host9",
+      "host": "server08",
+      "ip": "172.16.150.8",
+      "nic_ip": "172.16.170.8",
+      "ssh_port": "6008",
+      "user": "sdn",
+      "pwd": "sdn123456",
+      "computation": 3,
+      "dynamics": 2
+    }
+  ]
+}
