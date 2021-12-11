@@ -1,5 +1,6 @@
 import json
 import random
+import time
 from collections import defaultdict
 from collections import deque
 
@@ -45,6 +46,14 @@ def random_pick(elements, probabilities):
         if x < cumulative_probability:
             return item
 
+    # max_index = 0
+    # max_prob = 0
+    # for index, item_probability in enumerate(probabilities):
+    #     if item_probability > max_prob:
+    #         max_prob = item_probability
+    #         max_index = index
+    # return elements[max_index]
+
 
 def covert_path(path):
     tmp = deque()
@@ -58,13 +67,13 @@ def covert_path(path):
 
 def solve_lp(worker_num, switch_num,
              host_set, switch_set, path_set, link_set,
-             switch_capacity, band, ps_num=1, t=96, mu=0.1):
-    x = [[pl.LpVariable('x_n' + str(i) + '^s' + str(j), lowBound=0, upBound=1, cat=pl.LpContinuous)
+             switch_capacity, band, ps_num=1, t=90, mu=1):
+    x = [[pl.LpVariable('x_n' + str(i) + '^s' + str(j), lowBound=0, upBound=1, cat=pl.LpBinary)
           for j in range(switch_num + ps_num)]
          for i in range(worker_num)]
-    y = [pl.LpVariable('y_s' + str(i), lowBound=0, upBound=1, cat=pl.LpContinuous)
+    y = [pl.LpVariable('y_s' + str(i), lowBound=0, upBound=1, cat=pl.LpBinary)
          for i in range(switch_num)]
-    V = [pl.LpVariable('V_s' + str(i), lowBound=0, cat=pl.LpContinuous)
+    V = [pl.LpVariable('V_s' + str(i), lowBound=0, cat=pl.LpInteger)
          for i in range(switch_num)]
 
     path_set_index = [[[] for j in range(switch_num + ps_num)]
@@ -131,74 +140,59 @@ def solve_lp(worker_num, switch_num,
         prob += V[i] * t * mu <= switch_capacity[i]
 
     for i in range(len(link_set)):
-        prob += pl.lpSum([ep[m] * I[i][m] for j in range(worker_num)
-                          for k in range(switch_num + ps_num)
-                          for m in path_set_index[j][k]]) + \
-                pl.lpSum([ep[m] * I[i][m] for j in range(switch_num)
-                          for k in range(ps_num)
-                          for m in path_set_index[worker_num + k][j]]) <= band[i] / t
+        prob += (pl.lpSum([ep[m] * I[i][m] for j in range(worker_num)
+                           for k in range(switch_num + ps_num)
+                           for m in path_set_index[j][k]]) + pl.lpSum([ep[m] * I[i][m] for j in range(switch_num)
+                                                                       for k in range(ps_num)
+                                                                       for m in
+                                                                       path_set_index[worker_num + k][j]])) * t <= band[
+                    i]
 
-    # status = prob.solve(pl.get_solver("CPLEX_PY"))
-    status = prob.solve()
+    status = prob.solve(pl.get_solver("CPLEX_PY"))
+    # status = prob.solve()
     print('objective =', pl.value(prob.objective))
 
-    # f = open(
-    #     "../data/lp1_x_user_" + str(USERAMOUNT) + "_request_" + str(request_num) + "_k_" + str(_K) + "_p_" + str(_P),
-    #     "w")
-    # f.write(str(pl.value(prob.objective)) + '\n')
-    # for i in range(ECNAMOUNT):
-    #     for j in range(VNFAMOUNT):
-    #         f.write(str(pl.value(x[i][j])) + ' ')
-    #     f.write('\n')
-    # f.close()
-    #
-    # f = open(
-    #     "../data/lp1_y_user_" + str(USERAMOUNT) + "_request_" + str(request_num) + "_k_" + str(_K) + "_p_" + str(_P),
-    #     "w")
-    # for i in range(ECNAMOUNT):
-    #     for j in range(VNFAMOUNT):
-    #         for k in range(USERAMOUNT):
-    #             f.write(str(pl.value(y[i][j][k])) + ' ')
-    #         f.write('\n')
-    # f.close()
-
     x_res = [[pl.value(x[i][j]) for j in range(switch_num + ps_num)] for i in range(worker_num)]
-    # y_res = [pl.value(y[i]) for i in range(switch_num)]
-    # ep_res = [pl.value(ep[i]) for i in range(path_count)]
+    y_res = [pl.value(y[i]) for i in range(switch_num)]
+    ep_res = [pl.value(ep[i]) for i in range(path_count)]
 
-    return x_res
+    return x_res, y_res, ep_res, path_set_index, index_to_path
 
 
 def RRIAR(worker_num, switch_num,
           host_set, switch_set, path_set, link_set,
-          switch_capacity, band, ps_num=1, mu=0.1, t=96,
+          switch_capacity, band, ps_num=1,
           file_name=None):
-    x_res = solve_lp(worker_num, switch_num,
-                     host_set, switch_set, path_set, link_set,
-                     switch_capacity, band, ps_num, mu, t)
+    x_res, y_res, ep_res, path_set_index, index_to_path = solve_lp(worker_num, switch_num,
+                                                                   host_set, switch_set, path_set, link_set,
+                                                                   switch_capacity, band)
     s = [-1 for i in range(worker_num)]
     y = [0 for i in range(switch_num + ps_num)]
     path_list = []
     for i in range(worker_num):
         s[i] = random_pick([j for j in range(switch_num + ps_num)], x_res[i])
         y[s[i]] = 1
-        # TODO: extend to multi paths
-        if s[i] < switch_num:
-            path_list.append(path_set[host_set[i]][switch_set[s[i]]][0])  # path of worker to switch
-        else:
-            path_list.append(path_set[host_set[i]][host_set[worker_num]][0])  # path of worker to ps
+        feasible_path = path_set_index[i][s[i]]
+        path_id = random_pick(feasible_path,
+                              [ep_res[feasible_path[j]] for j in range(len(feasible_path))])
+
+        (host0, host1, id) = index_to_path[path_id]
+        path_list.append(path_set[host0][host1][id])  # paths of workers
     for i in range(switch_num):
         if y[i] == 1:
-            path_list.append(path_set[host_set[worker_num]][switch_set[i]][0])
+            feasible_path = path_set_index[worker_num][i]
+            path_id = random_pick(feasible_path,
+                                  [ep_res[feasible_path[j]] for j in range(len(feasible_path))])
+            (host0, host1, id) = index_to_path[path_id]
+            path_list.append(path_set[host0][host1][id])
 
     if file_name is not None:
         with open(file_name, 'w') as f:
             f.write('PS number = {}\n'
                     'Worker number = {}\n'
                     'Switch number = {}\n'
-                    'Model size = {} Mb\n'
                     'Link bandwidth = {} Mbps\n'.format(
-                str(ps_num), str(worker_num), str(switch_num), str(t), str(band[0])))
+                str(ps_num), str(worker_num), str(switch_num), str(band[0])))
             f.write('\n')
             for i in range(worker_num):
                 if s[i] < switch_num:
@@ -221,7 +215,7 @@ def RRIAR(worker_num, switch_num,
 
 
 def schemes(worker_num):
-    switch_set = ['s1', 's2', 's3', 's4','s5','s6']
+    switch_set = ['s1', 's2', 's3', 's4', 's5', 's6']
     host_set = ['h' + str(i) for i in range(1, worker_num + 1)]
     ps_num = 1
     topo, link_set = init_topo('../data/topo/topo_{}_workers.json'.format(str(worker_num)))
@@ -241,34 +235,44 @@ def schemes(worker_num):
                 continue
             paths = get_feasible_path(topo, s, s1)
             path_set[s][s1] = paths
-
-    band = [1000 for i in range(len(link_set))]
-    capacity = [400 for i in range(len(switch_set))]
-    t = 100
+    switch_num = len(switch_set)
+    band = [topo[link_set[j][0]][link_set[j][1]] * 1000 for j in range(len(link_set))]
+    capacity = [700 for i in range(len(switch_set))]
     RRIAR(len(host_set) - ps_num, len(switch_set), host_set, switch_set, path_set, link_set, capacity,
           band, file_name='../data/path_{}_workers.txt'.format(str(worker_num)))
 
 
 if __name__ == '__main__':
-    # switch_set = ['s1', 's2', 's3', 's4']
-    # host_set = ['h' + str(i) for i in range(1, 8)]
-    # ps_num = 1
-    # topo, link_set = init_topo('../data/topo/topo_7_workers.json')
-    # path_set = defaultdict(dict)
-    # for h in host_set:
-    #     for s in switch_set:
-    #         paths = get_feasible_path(topo, h, s)
-    #         path_set[h][s] = paths
-    #     for h1 in host_set:
-    #         if h is h1:
-    #             continue
-    #         paths = get_feasible_path(topo, h, h1)
-    #         path_set[h][h1] = paths
-    # band = [500 for i in range(len(link_set))]
-    # capacity = [500 for i in range(len(switch_set))]
-    # t = 100
-    # RRIAR(len(host_set) - ps_num, len(switch_set), host_set, switch_set, path_set, link_set, capacity,
-    #       band, file_name='../data/path_7_workers.txt')
-
     for i in [7, 10, 13, 16, 19]:
         schemes(worker_num=i)
+    # schedule_time = []
+    # for i in [2, 4, 6, 8]:
+    #     switch_set = ['s1', 's2']
+    #     host_set = ['h' + str(i) for i in range(1, i + 1)]
+    #     ps_num = 1
+    #     topo, link_set = init_topo('../data/topo/testbed_topo_{}_workers.json'.format(str(i)))
+    #     path_set = defaultdict(dict)
+    #     for h in host_set:
+    #         for s in switch_set:
+    #             paths = get_feasible_path(topo, h, s)
+    #             path_set[h][s] = paths
+    #         for h1 in host_set:
+    #             if h is h1:
+    #                 continue
+    #             paths = get_feasible_path(topo, h, h1)
+    #             path_set[h][h1] = paths
+    #     for s in switch_set:
+    #         for s1 in switch_set:
+    #             if s is s1:
+    #                 continue
+    #             paths = get_feasible_path(topo, s, s1)
+    #             path_set[s][s1] = paths
+    #
+    #     band = [topo[link_set[j][0]][link_set[j][1]] * 100 for j in range(len(link_set))]
+    #     capacity = [400 for j in range(len(switch_set))]
+    #     t = 100
+    #     start_time = time.time()
+    #     RRIAR(len(host_set) - ps_num, len(switch_set), host_set, switch_set, path_set, link_set, capacity,
+    #           band)
+    #     schedule_time.append(time.time() - start_time)
+    # print(schedule_time)
