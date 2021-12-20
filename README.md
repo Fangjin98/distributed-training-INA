@@ -1,4 +1,4 @@
-# PS training prototype with in-network aggregation 
+# training ML tasks with in-network aggregation 
 
 A distributed PS training architecture with P4 programmable switches accelerating.
 
