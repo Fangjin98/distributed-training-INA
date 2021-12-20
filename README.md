@@ -1,4 +1,4 @@
-# training ML tasks with in-network aggregation 
+# Training ML tasks with in-network aggregation 
 
 A distributed PS training architecture with P4 programmable switches accelerating.
 
