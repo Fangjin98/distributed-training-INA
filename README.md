@@ -1,6 +1,6 @@
-# distributed_PS_ML
+# P4-based in-network aggregation PS training prototype
 
-A socket based distributed PS training architecture.
+A distributed PS training architecture with P4 programmable switches accelerating.
 
 ## Dependency
 
