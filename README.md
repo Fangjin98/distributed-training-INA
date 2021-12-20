@@ -1,4 +1,4 @@
-# P4-based in-network aggregation PS training prototype
+# PS training prototype with in-network aggregation 
 
 A distributed PS training architecture with P4 programmable switches accelerating.
 
