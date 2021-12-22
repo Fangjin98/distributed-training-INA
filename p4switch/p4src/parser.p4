@@ -24,16 +24,17 @@ parser IngressParser(
     }
 
     state meta_init {
-        ig_md.tobe_agg        = 0;
-        ig_md.aggIndex=0;
-        ig_md.count_value=0;
+        ig_md.is_aggregation= 0;
+        ig_md.count=0;
+        ig_md.collision=0;
+        ig_md.index=0;
         transition parse_ethernet;
     }
 
     
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
-        transition select(hdr.ethernet.etherType) {
+        transition select(hdr.ethernet.ether_type) {
             TYPE_IPV4: parse_ipv4;
             default: accept;
         }
@@ -42,14 +43,14 @@ parser IngressParser(
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
         transition select(hdr.ipv4.protocol) {
-            TYPE_ATP: parse_value;
+            TYPE_NGAA: parse_ngaa;
             default: accept;
         }
     }
 
-    state parse_value {
-        pkt.extract(hdr.atp);
-        pkt.extract(hdr.atp_data);
+    state parse_ngaa {
+        pkt.extract(hdr.ngaa);
+        pkt.extract(hdr.gradient);
         transition accept;
     }
 }
@@ -68,18 +69,18 @@ control IngressDeparser(
     
     apply {
         if(hdr.ipv4.isValid()){
-            hdr.ipv4.hdrChecksum = ipv4_checksum.update({
+            hdr.ipv4.hdr_checksum = ipv4_checksum.update({
                 hdr.ipv4.version,
                 hdr.ipv4.ihl,
                 hdr.ipv4.diffserv,
-                hdr.ipv4.totalLen,
+                hdr.ipv4.total_len,
                 hdr.ipv4.identification,
                 hdr.ipv4.flags,
-                hdr.ipv4.fragOffset,
+                hdr.ipv4.frag_offset,
                 hdr.ipv4.ttl,
                 hdr.ipv4.protocol,
-                hdr.ipv4.srcAddr,
-                hdr.ipv4.dstAddr
+                hdr.ipv4.src_addr,
+                hdr.ipv4.dst_addr
             });
         }
         pkt.emit(hdr);

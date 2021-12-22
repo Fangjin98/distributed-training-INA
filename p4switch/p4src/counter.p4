@@ -6,7 +6,7 @@
 
 control My_Counter(
     in metadata_t ig_md,
-    in bit<8> aggregationDegree,
+    in bit<8> count,
     out bit<8> value_out
     ) {
 

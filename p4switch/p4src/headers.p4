@@ -3,41 +3,41 @@
 
 #include "types.p4"
 
-header ethernet_t {
-    macAddr_t dstAddr;
-    macAddr_t srcAddr;
-    bit<16>   etherType;
+header ethernet_h {
+    mac_addr_t dst_addr;
+    mac_addr_t src_addr;
+    bit<16>   ether_type;
 }
 
-header ipv4_t {
+header ipv4_h {
     bit<4>    version;
     bit<4>    ihl;
     bit<8>    diffserv;
-    bit<16>   totalLen;
+    bit<16>   total_len;
     bit<16>   identification;
     bit<3>    flags;
-    bit<13>   fragOffset;
+    bit<13>   frag_offset;
     bit<8>    ttl;
     bit<8>    protocol;
-    bit<16>   hdrChecksum;
-    ip4Addr_t srcAddr;
-    ip4Addr_t dstAddr;
+    bit<16>   hdr_checksum;
+    ipv4_addr_t src_addr;
+    ipv4_addr_t dst_addr;
 }
 
-header atp_t {
-    bit<32> workerMap;
-    bit<8>  aggregationDegree;
-    bit<1> overflow;           
-    bit<1> isAck;               
-    bit<1> ecn;                
-    bit<1> resend;            
-    bit<4> timestamp;         
-    bit<32> aggIndex;
-    bit<8> switchId;            
-    bit<32> sequenceId;         
+header ngaa_h {
+    b32_t bitmap;
+    bit<8>  count;
+    bit<1>  overflow;           
+    bit<1>  is_ack;               
+    bit<1>  collision;                
+    bit<1>  resend;            
+    bit<4>  timestamp;         
+    b32_t index;
+    bit<8>  switch_id;            
+    b32_t frag_id;         
 }
 
-header entry_t { // TODO: rename
+header ngaa_payload_h {
     data_t value00;
     data_t value01;
     data_t value02;
@@ -73,26 +73,25 @@ header entry_t { // TODO: rename
 }
 
 struct header_t {
-    ethernet_t   ethernet;
-    ipv4_t       ipv4;
-    atp_t        atp;
-    entry_t      atp_data;
+    ethernet_h      ethernet;
+    ipv4_h          ipv4;
+    ngaa_h          ngaa;
+    ngaa_payload_h  gradient;
 }
-
-struct empty_metadata_t {}
-
 
 /*************************************************************************
  ***********************  M E T A D A T A  *******************************
  *************************************************************************/
+struct empty_metadata_t {}
 
 struct metadata_t {
-    bit<1> tobe_agg;
-    bit<1> isAck;
-    bit<1> clear;
-    bit<8> aggDegree;
-    bit<8> count_value;
-    bit<32> aggIndex;
+    bit<1> is_aggregation;
+    bit<1> collision;
+    bit<1> is_ack;
+    bit<8> count;
+    index_t index;
+    b32_t frag_id;
+    b32_t read_frag_id; 
 }
 
 

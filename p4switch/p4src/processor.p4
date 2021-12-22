@@ -9,54 +9,42 @@ control Processor(
     out data_t value_out,
     in metadata_t meta) {
 
-    Register<data_single_t,index_t>(register_size) values; 
+    Register<data_single_t,index_t>(NUM_REGISTER) value; 
 
-    // Compute sum of both values and read first one
-    RegisterAction<data_single_t, index_t, data_t>(values) sum_read_register_action = {
-        void apply(inout data_single_t value, out data_t read_value) {
-            if(meta.count_value == 1){ //the first value
+    RegisterAction<data_single_t, index_t, data_t>(value) sum_read_value = {
+        void apply(inout data_single_t value, out data_t out_value) {
+            if(meta.count == 1){ //first packet
                 value.first=value_in;
             }
             else{
                 value.first  = value.first + value_in;
             }
-            read_value = value.first;
+            out_value = value.first;
         }
     };
-
+    
     action sum_read_action() {
-        value_out = sum_read_register_action.execute(meta.aggIndex);
+        value_out = sum_read_value.execute(meta.index);
     }
 
-    // Read first sum register
-    RegisterAction<data_single_t, index_t, data_t>(values) read_register_action = {
-        void apply(inout data_single_t value, out data_t read_value) {
-            read_value = value.first;
-        }
-    };
 
-    action read_action() {
-        value_out = read_register_action.execute(meta.aggIndex);
-    }
-
-    table sum {
-        key = {
-           meta.tobe_agg: exact;
-        }
-        actions = {
-            sum_read_action;
-            read_action;
-            NoAction;
-        }
-        size = 1;
-        const entries={
-            (1):sum_read_action();
-        }
-        const default_action = NoAction;
-    }
+    // table sum {
+    //     key = {
+    //        meta.is_aggregation: exact;
+    //     }
+    //     actions = {
+    //         sum_read_action;
+    //         NoAction;
+    //     }
+    //     size = 1;
+    //     const entries={
+    //         (1):sum_read_action();
+    //     }
+    //     const default_action = NoAction;
+    // }
 
     apply {
-        sum.apply();
+        sum_read_action();
     }
 }
 
