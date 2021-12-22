@@ -8,10 +8,6 @@
 #include "config.p4"
 // #include "counter.p4"
 
-/*************************************************************************
-**************  I N G R E S S   P R O C E S S I N G   *******************
-*************************************************************************/
-
 control Ingress(
         inout header_t hdr,
         inout metadata_t ig_md,
@@ -19,7 +15,7 @@ control Ingress(
         in ingress_intrinsic_metadata_from_parser_t ig_prsr_md,
         inout ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md,
         inout ingress_intrinsic_metadata_for_tm_t ig_tm_md) {
-    
+
     action set_agg() {
         ig_md.tobe_agg = 1;
     }
@@ -27,7 +23,7 @@ control Ingress(
     action unset_agg() {
         ig_md.tobe_agg = 0;
     }
-    
+
     table switch_check {
         key = {
             hdr.atp.switchId: exact;
@@ -39,18 +35,18 @@ control Ingress(
         size = 1024;
         default_action = unset_agg;
     }
-   
+
     action drop() {
         ig_dprsr_md.drop_ctl = 1;
     }
-    
+
     action ipv4_forward(macAddr_t dstMacAddr, egressSpec_t port) {
         ig_tm_md.ucast_egress_port = port;
         // hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         // hdr.ethernet.dstAddr = dstMacAddr;
         // hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
-    
+
     table ipv4_lpm {
         key = {
             hdr.ipv4.dstAddr: exact;
@@ -65,7 +61,7 @@ control Ingress(
     }
 
 
-    Register<bit<8>,index_t>(register_size, 0) count_reg; 
+    Register<bit<8>,index_t>(register_size, 0) count_reg;
 
     RegisterAction<bit<8>, index_t, bit<8>>(count_reg) count_register_action = {
         void apply(inout bit<8> value, out bit<8> read_value) {
@@ -82,7 +78,7 @@ control Ingress(
     action count_action(){
         ig_md.count_value=count_register_action.execute(ig_md.aggIndex);
     }
-    
+
     Processor() value00;
     Processor() value01;
     Processor() value02;
@@ -126,8 +122,8 @@ control Ingress(
                 else{
                     ig_md.aggIndex = hdr.atp.aggIndex;
                     ig_md.aggDegree = hdr.atp.aggregationDegree;
-                    count_action(); 
-                    
+                    count_action();
+
                     value00.apply(hdr.atp_data.value00,hdr.atp_data.value00,ig_md);
                     value01.apply(hdr.atp_data.value01,hdr.atp_data.value01,ig_md);
                     value02.apply(hdr.atp_data.value02,hdr.atp_data.value02,ig_md);
@@ -160,7 +156,7 @@ control Ingress(
                     value29.apply(hdr.atp_data.value29,hdr.atp_data.value29,ig_md);
                     value30.apply(hdr.atp_data.value30,hdr.atp_data.value30,ig_md);
                     value31.apply(hdr.atp_data.value31,hdr.atp_data.value31,ig_md);
-                
+
                     if (ig_md.count_value == hdr.atp.aggregationDegree){
                         ipv4_lpm.apply();
                     }
@@ -170,22 +166,18 @@ control Ingress(
                 }
             }
             else{
-                drop();
+                ipv4_lpm.apply();
             }
-        } 
-        else {     
+        }
+        else {
             if (hdr.ipv4.isValid()) {
                 ipv4_lpm.apply();
             }
         }
 
-        
+
     }
 }
-
-/*************************************************************************
-***********************  S W I T C H  *******************************
-*************************************************************************/
 
 Pipeline(IngressParser(),
          Ingress(),
