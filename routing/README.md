@@ -10,6 +10,6 @@ pulp numpy
 
 ## Directory Structure
 
-- algs: implementation of IAR and benchmarks.
-- data/topo: JSON files about the infomation of network topology.
-- utils: helper scripts
+- algs: implementation of IAR and other benchmarks.
+- data/topo: JSON files include the infomation of network topology.
+- utils: helper classes
