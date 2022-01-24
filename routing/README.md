@@ -1,7 +1,12 @@
 This directory contains the codes of our routing algorithm.
 
 ## Getting Start
-To run the program, install the following dependancies first:
+
+The routing algorithms require python 3.8 and the following python packages:
+
+```
+pulp numpy
+```
 
 ## Directory Structure
 
