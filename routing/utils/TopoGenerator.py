@@ -24,12 +24,12 @@ class TopoGenerator(object):
                     self.topo[src].remove(node)
                     break
     
-    def construct_path_set(self,host_set,switch_set,max_len=3):
+    def construct_path_set(self,src_set,dst_set,max_len=3):
         path=defaultdict(dict)
-        for h in host_set:
-            for s in switch_set:
-                path[h][s]=[
-                    Path(p) for p in self._get_feasible_path(h,s,max_len)]
+        for s in src_set:
+            for d in dst_set:
+                path[s][d]=[
+                    Path(p) for p in self._get_feasible_path(s,d,max_len)]
         return path
     
     def _get_feasible_path(self, src, dst, max_len, path=[]):
@@ -59,8 +59,9 @@ class TopoGenerator(object):
 
 
 class Path(object):
-    def __init__(self, node_list):
+    def __init__(self, node_list,link_list=[]):
         self.node_list=node_list
+        self.link_list=link_list
     
     def __repr__(self):
         p_str=self.node_list[0]
@@ -68,16 +69,26 @@ class Path(object):
             p_str=p_str+'->'+ node
         return p_str
         
-    def get_link(self,topo):
-        link_set=defaultdict(dict)
+    def get_link_weight(self,topo):
+        link_weight=defaultdict(dict)
         for i in range(len(self.node_list)-1):
             node1=self.node_list[i]
             node2=self.node_list[i+1]
-            link_set[node1][node2]=topo[node1][node2]
-        return link_set
+            link_weight[node1][node2]=topo[node1][node2]
+            self.link_list.append((node1,node2))
+        return link_weight
     
     def get_path(self):
         return self.node_list
+    
+    def get_link(self):
+        if self.link_list is None:
+            for i in range(len(self.node_list)-1):
+                node1=self.node_list[i]
+                node2=self.node_list[i+1]
+                self.link_list.append((node1,node2))
+        
+        return self.link_list
 
 
 if __name__ == '__main__':
