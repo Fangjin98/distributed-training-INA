@@ -13,3 +13,4 @@ pulp numpy
 - algs: implementation of IAR and other benchmarks.
 - data/topo: JSON files include the infomation of network topology.
 - utils: helper classes
+- scripts: test scripts

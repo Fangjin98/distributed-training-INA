@@ -4,3 +4,4 @@ data/log/tensor/model*
 data/models/
 data/datasets/
 .idea/
+__pycache__/
