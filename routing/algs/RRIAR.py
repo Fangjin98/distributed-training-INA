@@ -30,11 +30,12 @@ class RRIAR:
         self.path_num=0
         self.worker_path_num=0
         self.switch_path_num=0
+        self.paths=None
 
-    def run(self,ps_set, worker_set, switch_set, t=90,mu=1):
+    def run(self, ps_set, worker_set, switch_set, t=90,mu=1):
         path_index, constant_I,band=self._get_constants(ps_set, worker_set, switch_set)
         comp=[1 for i in range(len(switch_set))]
-        optimal_results=self._solve_lp(ps_set, worker_set,switch_set,path_index, constant_I,band,comp,t,mu)
+        optimal_results=self._solve_lp(ps_set, worker_set,switch_set, path_index, constant_I,band,comp,t,mu)
         return self._random_rounding(optimal_results)
 
     def _get_constants(self,ps_set, worker_set,switch_set):
@@ -68,6 +69,7 @@ class RRIAR:
         
         self.switch_path_num=path_num-self.worker_path_num
         self.path_num=path_num
+        self.paths=paths
         
         link_index,band,link_num=get_link_array(paths)
         
@@ -142,18 +144,47 @@ class RRIAR:
         status = prob.solve()
         print('objective =', pl.value(prob.objective))
 
-        x_ps_res = [[pl.value(x_ps[i][j]) for j in range( ps_num)]for i in range(worker_num) ] 
-        x_s_res=[[pl.value(x_s[i][j]) for j in range(switch_num)] for i in range(worker_num)]
-        y_res = [pl.value(y[i]) for i in range(switch_num)]
-        ep_res = [pl.value(ep[i]) for i in range(path_num)]
+        x_ps_res = np.asarray([[pl.value(x_ps[i][j]) for j in range( ps_num)]for i in range(worker_num) ])
+        x_s_res=np.asarray([[pl.value(x_s[i][j]) for j in range(switch_num)] for i in range(worker_num)])
+        y_res = np.asarray([pl.value(y[i]) for i in range(switch_num)])
+        ep_res = np.asarray([pl.value(ep[i]) for i in range(path_num)])
 
         return x_ps_res,x_s_res, y_res, ep_res
 
-    def _random_rounding(optimal_results):
-        pass
-
-if __name__=="__main__":
-    topo=TopoGenerator(json.load(open('/home/sdn/fj/distributed_PS_ML/routing/data/topo/fattree80.json')))
-    myalg=RRIAR(topo)
-    RRIAR.run(['h1'],['h2','h3','h4','h5'],['s1','s2','s3'])
+    def _random_rounding(self,optimal_results, ps_set, worker_set, switch_set, path_set):
+        x_ps_res=optimal_results[0]
+        x_s_res=optimal_results[1]
+        y_res=optimal_results[2]
+        ep_res=optimal_results[3]
+        
+        x_n_s=[]
+        prob_x_n_s=[]
+        p_n_s=[]
+        p_s=[]
+        y_s=np.zeros(len(switch_set))
+        
+        for w,index in enumerate(worker_set):
+            prob_x=x_ps_res[index]+x_s_res[index]
+            s_res=np.random.choice([i for i in range(len(ps_set)+len(switch_set))],p=prob_x.ravel())
+            if s_res<len(ps_set):  # aggregate on PS
+                x_n_s.append(ps_set[s_res])
+                prob_x_n_s.append(prob_x[s_res])
+            else:       # aggregate on switch
+                x_n_s.append(switch_set[s_res-len(ps_set)])
+                prob_x_n_s.append(prob_x[s_res])
+                y_s[s_res-len(ps_set)]=1
+                  
+        for w, index in enumerate(worker_set):
+            prob_ep=np.asarray([ep_res[k] for k in range(path_set[worker_set[index]][x_n_s[index]][0],path_set[worker_set[index]][x_n_s[index]][1])])/prob_x_n_s[index]
+            p_res=np.random.choice([i for i in range(path_set[worker_set[index]][x_n_s[index]][0],path_set[worker_set[index]][x_n_s[index]][1])],p=prob_ep.ravel())
+            p_n_s.append(self.paths[p_res])
+        
+        for ps in ps_set:
+            for s,index in enumerate(switch_set):
+                if y_s[index]==1:
+                    prob_ep=np.asarray([ep_res[k] for k in range(path_set[switch_set[index]][ps][0],path_set[switch_set[index]][ps][1])])/y_res[index]
+                    p_res=np.random.choice([i for i in range(path_set[switch_set[index]][ps][0],path_set[switch_set[index]][ps][1])],p=prob_ep.ravel())
+                    p_s.append(self.paths[p_res])
+        
+        return p_n_s,p_s            
     
