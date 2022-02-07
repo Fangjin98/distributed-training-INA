@@ -3,25 +3,25 @@ from collections import defaultdict
 from os import link
 
 class TopoGenerator(object):
-    def __init__(self, topo=defaultdict(list)):
-        self.topo = topo
+    def __init__(self, topo_dict=defaultdict(list)):
+        self.topo_dict = topo_dict
     
     def __str__(self) -> str:
-        return str(self.topo)
+        return str(self.topo_dict)
 
     def add_edge(self, src, dst, weight):
-        self.topo[src].append({dst: weight})
-        self.topo[dst].append({src: weight})
+        self.topo_dict[src].append({dst: weight})
+        self.topo_dict[dst].append({src: weight})
 
     def add_edges(self, edge_list):
         for e in edge_list:
             self.add_edge(e[0], e[1], e[2])
 
     def remove_edge(self, src, dst):
-        if self.topo[src]:
-            for node in self.topo[dst]:
+        if self.topo_dict[src]:
+            for node in self.topo_dict[dst]:
                 if node.keys()[0] is dst:
-                    self.topo[src].remove(node)
+                    self.topo_dict[src].remove(node)
                     break
     
     def construct_path_set(self,src_set,dst_set,max_len=3):
@@ -43,7 +43,7 @@ class TopoGenerator(object):
 
         paths=[]
 
-        for node in self.topo[src].keys():
+        for node in self.topo_dict[src].keys():
             if node not in path:
                 results=self._get_feasible_path(node,dst,max_len,path)
                 if results is not None:
@@ -53,7 +53,7 @@ class TopoGenerator(object):
         return paths
     
     def generate_json(self,json_file):
-        json_str = json.dumps(self.topo, indent=4)
+        json_str = json.dumps(self.topo_dict, indent=4)
         with open(json_file, 'w') as f:
             f.write(json_str)
 
@@ -69,12 +69,12 @@ class Path(object):
             p_str=p_str+'->'+ node
         return p_str
         
-    def get_link_weight(self,topo):
+    def get_link_weight(self,topo_dict):
         link_weight=defaultdict(dict)
         for i in range(len(self.node_list)-1):
             node1=self.node_list[i]
             node2=self.node_list[i+1]
-            link_weight[node1][node2]=topo[node1][node2]
+            link_weight[node1][node2]=topo_dict[node1][node2]
             self.link_list.append((node1,node2))
         return link_weight
     
@@ -97,5 +97,5 @@ if __name__ == '__main__':
     switch_set=['v1','v2','v3']
     path=topo.construct_path_set(host_set,switch_set,6)
     print(path[host_set[1]][switch_set[1]][0])
-    print(path[host_set[1]][switch_set[1]][0].get_link(topo.topo))
+    print(path[host_set[1]][switch_set[1]][0].get_link(topo.topo_dict))
     
