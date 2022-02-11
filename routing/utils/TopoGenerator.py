@@ -59,10 +59,17 @@ class TopoGenerator(object):
 
 
 class Path(object):
-    def __init__(self, node_list,link_list=[]):
+    def __init__(self, node_list,link_list=None):
         self.node_list=node_list
-        self.link_list=link_list
-    
+        if link_list==None:
+            self.link_list=[]
+            for i in range(len(self.node_list)-1):
+                node1=self.node_list[i]
+                node2=self.node_list[i+1]
+                self.link_list.append((node1,node2))
+        else:
+            self.link_list=link_list
+            
     def __repr__(self):
         p_str=self.node_list[0]
         for node in self.node_list[1:]:
@@ -75,20 +82,7 @@ class Path(object):
             node1=self.node_list[i]
             node2=self.node_list[i+1]
             link_weight[node1][node2]=topo_dict[node1][node2]
-            self.link_list.append((node1,node2))
         return link_weight
-    
-    def get_path(self):
-        return self.node_list
-    
-    def get_link(self):
-        if self.link_list is None:
-            for i in range(len(self.node_list)-1):
-                node1=self.node_list[i]
-                node2=self.node_list[i+1]
-                self.link_list.append((node1,node2))
-        
-        return self.link_list
 
 
 if __name__ == '__main__':

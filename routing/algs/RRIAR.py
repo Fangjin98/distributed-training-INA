@@ -13,9 +13,8 @@ def get_link_array(paths: list , topo_dict: dict):
     band=[]
     
     for p in paths:
-        link_p=p.get_link()
         weight_p=p.get_link_weight(topo_dict)
-        for l in link_p:
+        for l in p.link_list:
             if l[1] not in link_index[l[0]].keys():
                 link_index[l[0]][l[1]]=link_num
                 link_num+=1
@@ -78,7 +77,7 @@ class RRIAR:
         
         constant_I=np.zeros((path_num,link_num))
         for index,p in enumerate(paths):
-            for l in p.get_link():
+            for l in p.link_list:
                 constant_I[index][link_index[l[0]][l[1]]]=1
         
         return path_index, constant_I, band
