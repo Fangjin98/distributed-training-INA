@@ -58,9 +58,12 @@ class ATP(BasicAlg):
             else:  # directly aggregate on ps
                 aggregation_node[w]=self.ps
                 
-                routing_paths.append(
-                    self._choose_path(candidate_paths[w][self.ps])
-                ) 
+                try:
+                    routing_paths.append(
+                        self._choose_path(candidate_paths[w][self.ps])
+                    ) 
+                except Exception as e:
+                    print(e)
         
         for s in self.switch_set:
             if switch_aggregatioin[s]:

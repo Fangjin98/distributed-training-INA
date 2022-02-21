@@ -6,21 +6,7 @@ import pulp as pl
 import numpy as np
 
 from routing.utils.TopoGenerator import TopoGenerator
-
-def get_link_array(paths: list , topo_dict: dict):
-    link_index=defaultdict(dict)
-    link_num=0
-    band=[]
-    
-    for p in paths:
-        weight_p=p.get_link_weight(topo_dict)
-        for l in p.link_list:
-            if l[1] not in link_index[l[0]].keys():
-                link_index[l[0]][l[1]]=link_num
-                link_num+=1
-                band.append(weight_p[l[0]][l[1]])
-    
-    return link_index,band,link_num
+from routing.utils.TopoGenerator import get_link_array
 
 class RRIAR:
     def __init__(self, topo: TopoGenerator, ps_num: int=1) -> None:
@@ -31,10 +17,12 @@ class RRIAR:
         self.switch_path_num=0
         self.paths=None
 
-    def run(self, ps_set, worker_set, switch_set, t=1,mu=1,solver=None):
-        path_index, constant_I,band=self._get_constants(ps_set, worker_set, switch_set)
+    def run(self, test_set, comp,t=1,mu=1,solver=None):
+        ps_set=[ test_set[0] ]
+        worker_set=test_set[1]
+        switch_set=test_set[2]
         
-        comp=[5 for i in range(len(switch_set))]
+        path_index, constant_I,band=self._get_constants(ps_set, worker_set, switch_set)
         
         optimal_results=self._solve_lp(ps_set, worker_set,switch_set, path_index, constant_I,band,comp,t,mu,solver)
         
@@ -194,5 +182,5 @@ class RRIAR:
                     p_res=np.random.choice([i for i in range(path_set[switch_set[index]][ps][0],path_set[switch_set[index]][ps][1])],p=prob_ep.ravel())
                     p_s.append(self.paths[p_res])
         
-        return p_n_s,p_s            
+        return x_n_s,[p_n_s,p_s]            
     
