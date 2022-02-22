@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections import deque
 import json
-
+import cplex
 import pulp as pl
 import numpy as np
 
@@ -78,21 +78,21 @@ class RRIAR:
         link_num=len(band)
 
         # Decision Variables
-        x_ps = [[pl.LpVariable('x_n' + str(i) + '^ps' + str(j), lowBound=0, upBound=1, cat=pl.LpContinuous)
+        x_ps = [[pl.LpVariable('x_n' + str(i) + 'ps' + str(j), lowBound=0,upBound=1)
             for j in range(ps_num)]
             for i in range(worker_num)]
         
-        x_s = [[pl.LpVariable('x_n' + str(i) + '^s' + str(j), lowBound=0, upBound=1, cat=pl.LpContinuous)
+        x_s = [[pl.LpVariable('x_n' + str(i) + 's' + str(j), lowBound=0,upBound=1)
             for j in range(switch_num)]
             for i in range(worker_num)]
         
-        y = [pl.LpVariable('y_s' + str(i), lowBound=0, upBound=1, cat=pl.LpContinuous)
+        y = [pl.LpVariable('y_s' + str(i), lowBound=0,upBound=1)
             for i in range(switch_num)]
 
-        ep = [pl.LpVariable('epsilon_p' + str(i), lowBound=0, upBound=1, cat=pl.LpContinuous)
+        ep = [pl.LpVariable('epsilon_p' + str(i), lowBound=0,upBound=1)
             for i in range(path_num)]
 
-        vv = [pl.LpVariable('V_s' + str(i), lowBound=0, cat=pl.LpInteger)
+        vv = [pl.LpVariable('V_s' + str(i), lowBound=0)
             for i in range(switch_num)]
 
         prob = pl.LpProblem("IAR", pl.LpMinimize)
@@ -133,7 +133,9 @@ class RRIAR:
         if solver_type is not None:
             try:
                 status = prob.solve(pl.get_solver(solver_type))
+                print("Using solver: "+solver_type)
             except Exception as e:
+                print(e)
                 status = prob.solve()
         else:
             status = prob.solve()
@@ -153,7 +155,7 @@ class RRIAR:
         y_res=optimal_results[2]
         ep_res=optimal_results[3]
         
-        x_n_s=[]
+        x_n_s=dict()
         prob_x_n_s=[]
         p_n_s=[]
         p_s=[]
@@ -161,25 +163,29 @@ class RRIAR:
         
         for index,w in enumerate(worker_set):
             prob_x=np.concatenate((x_ps_res[index],x_s_res[index]))
-            s_res=np.random.choice([i for i in range(len(ps_set)+len(switch_set))],p=prob_x.ravel())
+            if 0<x_ps_res[index]<1: # avoid selecting ps
+                s_res=np.argmax(x_s_res[index])+len(ps_set) # directly select the switch with max prob
+            else:                 
+                s_res=np.random.choice([i for i in range(len(ps_set)+len(switch_set))],p=prob_x.ravel())
+                
             if s_res<len(ps_set):  # aggregate on PS
-                x_n_s.append(ps_set[s_res])
+                x_n_s[w]=ps_set[s_res]
                 prob_x_n_s.append(prob_x[s_res])
             else:       # aggregate on switch
-                x_n_s.append(switch_set[s_res-len(ps_set)])
+                x_n_s[w]=switch_set[s_res-len(ps_set)]
                 prob_x_n_s.append(prob_x[s_res])
                 y_s[s_res-len(ps_set)]=1
                   
         for index,w in enumerate(worker_set):
-            prob_ep=np.asarray([ep_res[k] for k in range(path_set[worker_set[index]][x_n_s[index]][0],path_set[worker_set[index]][x_n_s[index]][1])])/prob_x_n_s[index]
-            p_res=np.random.choice([i for i in range(path_set[worker_set[index]][x_n_s[index]][0],path_set[worker_set[index]][x_n_s[index]][1])],p=prob_ep.ravel())
+            prob_ep=np.asarray([ep_res[k] for k in range(path_set[w][x_n_s[w]][0],path_set[w][x_n_s[w]][1])])/prob_x_n_s[index]
+            p_res=np.random.choice([i for i in range(path_set[w][x_n_s[w]][0],path_set[w][x_n_s[w]][1])],p=prob_ep.ravel())
             p_n_s.append(self.paths[p_res])
         
         for ps in ps_set:
             for index,s in enumerate(switch_set):
                 if y_s[index]==1:
-                    prob_ep=np.asarray([ep_res[k] for k in range(path_set[switch_set[index]][ps][0],path_set[switch_set[index]][ps][1])])/y_res[index]
-                    p_res=np.random.choice([i for i in range(path_set[switch_set[index]][ps][0],path_set[switch_set[index]][ps][1])],p=prob_ep.ravel())
+                    prob_ep=np.asarray([ep_res[k] for k in range(path_set[s][ps][0],path_set[s][ps][1])])/y_res[index]
+                    p_res=np.random.choice([i for i in range(path_set[s][ps][0],path_set[s][ps][1])],p=prob_ep.ravel())
                     p_s.append(self.paths[p_res])
         
         return x_n_s,[p_n_s,p_s]            
