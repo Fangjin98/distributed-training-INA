@@ -1,7 +1,13 @@
+.idea/
+.vscode/
+__pycache__/
+
 log*/
 runs/
+*.log
+
 data/log/tensor/model*
 data/models/
 data/datasets/
-.idea/
-__pycache__/
+
+routing/scripts/
