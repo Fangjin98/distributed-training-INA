@@ -5,12 +5,12 @@ This directory contains the codes of our routing algorithm.
 The routing algorithms require python 3.8 and the following python packages:
 
 ```
-pulp numpy
+pulp cplex numpy matplotlib
 ```
 
 ## Directory Structure
 
 - algs: implementation of IAR and other benchmarks.
-- data/topo: JSON files include the infomation of network topology.
+- data
+    - topo: JSON files include the infomation of network topology.
 - utils: helper classes
-- scripts: test scripts
