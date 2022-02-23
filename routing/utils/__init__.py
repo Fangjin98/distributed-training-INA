@@ -1,4 +1,5 @@
 __all__ = [
     'TopoGenerator',
-    'DataAnalyzer'
+    'DataAnalyzer',
+    'MyPlotter'
 ]
