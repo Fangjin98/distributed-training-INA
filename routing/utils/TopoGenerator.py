@@ -3,6 +3,8 @@ import random
 
 from collections import defaultdict
 
+from numpy import single
+
 def get_link_array(paths: list , topo_dict: dict):
     link_index=defaultdict(dict)
     link_num=0
@@ -23,6 +25,7 @@ class TopoGenerator(object):
         self.topo_dict = topo_dict
         self.host_set=[]
         self.switch_set=[]
+        
         for key in self.topo_dict.keys():
             if key[0]=='v':
                 self.switch_set.append(key)
@@ -47,6 +50,10 @@ class TopoGenerator(object):
                     self.topo_dict[src].remove(node)
                     break
     
+    def get_shortest_path(self,src,dst):
+        return self._get_feasible_path(src,dst,single_path=True)
+
+    
     def construct_path_set(self,src_set,dst_set,max_len=5):
         path=defaultdict(dict)
         for s in src_set:
@@ -55,14 +62,15 @@ class TopoGenerator(object):
                     Path(p) for p in self._get_feasible_path(s,d,max_len)]
         return path
     
-    def _get_feasible_path(self, src, dst, max_len, path=[]):
+    def _get_feasible_path(self, src, dst, max_len=None, path=[], single_path=False):
         path=path+[src]
 
         if src == dst:
             return [path]
 
-        if len(path) > max_len:
-            return
+        if max_len is not None:
+            if len(path) > max_len:
+                return
 
         paths=[]
 
@@ -70,8 +78,11 @@ class TopoGenerator(object):
             if node not in path:
                 results=self._get_feasible_path(node,dst,max_len,path)
                 if results is not None:
-                    for p in results:
-                        paths.append(p)
+                    if single_path:
+                        return results
+                    else:
+                        for p in results:
+                            paths.append(p)
 
         return paths
     
