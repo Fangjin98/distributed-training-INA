@@ -188,5 +188,5 @@ class RRIAR:
                     p_res=np.random.choice([i for i in range(path_set[s][ps][0],path_set[s][ps][1])],p=prob_ep.ravel())
                     p_s.append(self.paths[p_res])
         
-        return x_n_s,[p_n_s,p_s]            
+        return x_n_s,p_n_s+p_s            
     
