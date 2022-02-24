@@ -51,7 +51,7 @@ class TopoGenerator(object):
                     break
     
     def get_shortest_path(self,src,dst):
-        return self._get_feasible_path(src,dst,single_path=True)
+        return [Path(p) for p in self._get_feasible_path(src,dst,max_len=10)]
 
     
     def construct_path_set(self,src_set,dst_set,max_len=5):
@@ -62,7 +62,7 @@ class TopoGenerator(object):
                     Path(p) for p in self._get_feasible_path(s,d,max_len)]
         return path
     
-    def _get_feasible_path(self, src, dst, max_len=None, path=[], single_path=False):
+    def _get_feasible_path(self, src, dst, max_len=None, path=[]):
         path=path+[src]
 
         if src == dst:
@@ -78,11 +78,8 @@ class TopoGenerator(object):
             if node not in path:
                 results=self._get_feasible_path(node,dst,max_len,path)
                 if results is not None:
-                    if single_path:
-                        return results
-                    else:
-                        for p in results:
-                            paths.append(p)
+                    for p in results:
+                        paths.append(p)
 
         return paths
     
