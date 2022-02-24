@@ -22,7 +22,7 @@ class DT(BasicAlg):
         for w in self.flatten_worker_set:
             aggregation_node[w]=self.ps
             routing_paths.append(
-                self.topo.get_shortest_path(w,self.ps)
+                self.topo.get_shortest_path(w,self.ps)[0]
             )
         
         return aggregation_node, routing_paths
