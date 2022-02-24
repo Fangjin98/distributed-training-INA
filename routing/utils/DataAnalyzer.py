@@ -1,11 +1,10 @@
-from tokenize import String
-from typing import List
-
+from collections import defaultdict
+import numpy as np
 from routing.utils.TopoGenerator import TopoGenerator
 
 
 class DataAnalyzer:
-    def __init__(self, title: String, topo: TopoGenerator) -> None:
+    def __init__(self, title, topo: TopoGenerator) -> None:
         self.title=title
         self.topo=topo
     
@@ -37,7 +36,24 @@ class DataAnalyzer:
         
         return train_time*iteration
 
+    def cal_link_cdf(self, routing_paths,t,band,bin_edges):
+        band_usage=defaultdict(int)
+        arr=[]
+        
+        for p in routing_paths:
+            for l in p.link_list:
+                band_usage[l]+=t
+        
+        for l in band_usage.keys():
+            arr.append(band_usage[l])
+        
+        hist,bin_edges=np.histogram(arr,bins=bin_edges)
+        
+        return bin_edges,np.cumsum(hist)
+            
+                
+    
 
 class SwitchMLDataAnalyzer(DataAnalyzer):
-    def __init__(self, title: String, topo: TopoGenerator) -> None:
+    def __init__(self, title, topo: TopoGenerator) -> None:
         super().__init__(title, topo)
