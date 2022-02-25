@@ -3,8 +3,6 @@ import random
 
 from collections import defaultdict
 
-from numpy import single
-
 def get_link_array(paths: list , topo_dict: dict):
     link_index=defaultdict(dict)
     link_num=0
@@ -21,23 +19,32 @@ def get_link_array(paths: list , topo_dict: dict):
     return link_index,band,link_num
 
 class TopoGenerator(object):
-    def __init__(self, topo_dict=defaultdict(list)):
-        self.topo_dict = topo_dict
+    def __init__(self, topo_dict=dict()):
+        self.topo_dict = dict(topo_dict)
         self.host_set=[]
         self.switch_set=[]
         
+        for key in topo_dict.keys():
+            for value in topo_dict[key]:
+                try:
+                    if key not in self.topo_dict[value]: # add reverse links
+                        self.add_edge(value, key, topo_dict[key][value]) 
+                except KeyError as e:
+                    print(e)
+                    self.topo_dict[value]=dict()
+                    self.add_edge(value,key,topo_dict[key][value])
+                    
         for key in self.topo_dict.keys():
-            if key[0]=='v':
+            if key[0]=='v' and (key not in self.switch_set):
                 self.switch_set.append(key)
-            elif key[0]=='h':
+            elif key[0]=='h'and (key not in self.host_set):
                 self.host_set.append(key)
-    
+        
     def __str__(self) -> str:
         return str(self.topo_dict)
 
     def add_edge(self, src, dst, weight):
-        self.topo_dict[src].append({dst: weight})
-        self.topo_dict[dst].append({src: weight})
+        self.topo_dict[src][dst]= weight
 
     def add_edges(self, edge_list):
         for e in edge_list:
@@ -54,7 +61,7 @@ class TopoGenerator(object):
         return [Path(p) for p in self._get_feasible_path(src,dst,max_len=10)]
 
     
-    def construct_path_set(self,src_set,dst_set,max_len=5):
+    def construct_path_set(self,src_set,dst_set,max_len=8):
         path=defaultdict(dict)
         for s in src_set:
             for d in dst_set:
@@ -88,37 +95,34 @@ class TopoGenerator(object):
         with open(json_file, 'w') as f:
             f.write(json_str)
 
-    def generate_test_set(self, worker_num, switch_num,random_pick=False,flatten=True):
-        worker_num_of_rack=int(worker_num/switch_num)
-        if not random_pick: # TODO: need to check replication of random pick
-            ps=self.host_set[0]
-        else:
-            ps=random.choice(self.host_set)
-        worker_set=[]
+    def generate_test_set(self, worker_num, switch_num,random_pick=False,seed=None):
+        worker_num_per_rack=int(worker_num/switch_num)
+        temp_host_set=list(self.host_set)
+        temp_switch_set=list(self.switch_set)
+        
+        if random_pick:
+            if not seed:
+                random.seed(seed)
+            random.shuffle(temp_host_set)
+            random.shuffle(temp_switch_set)
+        
+        ps=temp_host_set[0]
+
+        flatten_worker_set=[]
         switch_set=[]
         
         for i in range(switch_num):
-            if not random_pick:
-                switch_set.append(self.switch_set[i])
-            else:
-                switch_set.append(random.choice(self.switch_set)) 
-        if flatten: # for RRIAR
-            for i in range(1,worker_num+1):
-                if not random_pick:
-                    worker_set.append(self.host_set[i])
-                else:
-                    worker_set.append(random.choice(self.host_set))
-        else: # for ATP & SwitchML
-            for i in range(switch_num):
-                rack_of_worker_set=[]
-                for j in range(worker_num_of_rack):
-                    if not random_pick:
-                        rack_of_worker_set.append(self.host_set[1+i*worker_num_of_rack+j])
-                    else:
-                        rack_of_worker_set.append(random.choice(self.host_set))
-                worker_set.append(rack_of_worker_set)
-                
-        return [ps, worker_set, switch_set]
+            switch_set.append(temp_switch_set[i])
+                 
+        for i in range(1,worker_num+1):
+                flatten_worker_set.append(temp_host_set[i])
+        
+        worker_set=[
+            [flatten_worker_set[j*worker_num_per_rack+i] for i in range(worker_num_per_rack)]
+             for j in range(switch_num)
+        ]
+        
+        return [ps, worker_set, switch_set],[ps, flatten_worker_set, switch_set]
 
 class Path(object):
     def __init__(self, node_list,link_list=None):
