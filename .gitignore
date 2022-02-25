@@ -10,4 +10,5 @@ data/log/tensor/model*
 data/models/
 data/datasets/
 
-routing/scripts/*
+routing/scripts/
+scripts/
