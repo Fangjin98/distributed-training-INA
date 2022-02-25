@@ -1,5 +1,6 @@
 from matplotlib import pyplot as plt
 
+
 class BasicPlotter:
     def __init__(self, algs, x_label, xlim, x_infos,
                  bar_pos=None, bar_color=None, bar_hatch=None,
@@ -78,7 +79,7 @@ class BasicPlotter:
         else:
             plt.show()
 
-    def plot_linegraph(self, y_values,y_infos,y_label,
+    def plot_linegraph(self, y_values, y_infos, y_label,
                        x_edges, x_label=None, x_infos=None,
                        fig_size=(8, 5),
                        save_file=False, file_name=None):
@@ -111,7 +112,7 @@ class BasicPlotter:
 
         ax.set_ylabel(y_label, self.label_font)
         ax.set_yticks(y_infos[0], y_infos[1])
-        ax.set_ylim(y_infos[0][0],y_infos[0][-1])
+        ax.set_ylim(y_infos[0][0], y_infos[0][-1])
 
         if save_file:
             try:
