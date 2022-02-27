@@ -1,9 +1,5 @@
 from threading import Thread
 
-import paramiko
-
-from typing import List
-from torch.utils.tensorboard import SummaryWriter
 from utils.comm_utils import *
 
 script_path_of_host = {
@@ -61,7 +57,7 @@ class Worker:
               ' --algorithm ' + self.common_config.algorithm + \
               ' --step_size ' + str(self.common_config.step_size) + \
               ' --write_to_file ' + str(self.common_config.write_to_file) + \
-              ' > data/log/client_' + str(self.idx) + '_log.txt 2>&1'
+              ' > data/log/client_' + str(self.idx) + '_model_' + str(self.config.model) + '_log.txt 2>&1'
 
         if self.config.client_ip == '127.0.0.1':
             t = Thread(target=self.__start_local_worker_process, args=(cmd,))
@@ -74,7 +70,7 @@ class Worker:
         print(cmd)
         os.system(cmd)
 
-    def __start_remote_worker_process(self,cmd):
+    def __start_remote_worker_process(self, cmd):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
@@ -146,7 +142,6 @@ class CommonConfig:
                  train_mode='local',
                  use_cuda=True,
                  master_listen_port_base=53300,
-                 summary_writer=SummaryWriter(),
                  project_dir="distributed_PS_ML"
                  ):
         self.dataset = dataset
@@ -167,7 +162,6 @@ class CommonConfig:
         self.algorithm = algorithm
 
         self.master_listen_port_base = master_listen_port_base
-        self.recoder = summary_writer
         self.project_dir = project_dir
         self.write_to_file = write_to_file
 

@@ -2,7 +2,7 @@ __all__ = [
     'DataManager',
     'comm_utils',
     'datasets',
-    'file_utils',
+    'FileOperation.py',
     'models',
     'NGAPacket',
     'training_utils'

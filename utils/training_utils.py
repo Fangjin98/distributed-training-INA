@@ -30,8 +30,8 @@ def train(model, data_loader, optimizer, local_iters=None, device=torch.device("
         output = model(data)
 
         optimizer.zero_grad()
-
-        loss = F.nll_loss(output, target)
+        loss_func=nn.CrossEntropyLoss()
+        loss = loss_func(output, target)
         loss.backward()
         optimizer.step()
 
@@ -62,7 +62,8 @@ def test(model, data_loader, device=torch.device("cpu"), model_type=None):
             output = model(data)
 
             # sum up batch loss
-            test_loss += F.nll_loss(output, target, reduction='sum').item()
+            loss_func = nn.CrossEntropyLoss(reduction='sum')
+            test_loss += loss_func(output, target).item()
             # get the index of the max log-probability
             pred = output.argmax(1, keepdim=True)
             batch_correct = pred.eq(target.view_as(pred)).sum().item()

@@ -5,8 +5,9 @@
       <sourceFolder url="file://$MODULE_DIR$" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.idea/inspectionProfiles" />
       <excludeFolder url="file://$MODULE_DIR$/data/datasets" />
+      <excludeFolder url="file://$MODULE_DIR$/PS" />
     </content>
-    <orderEntry type="jdk" jdkName="Remote Python 3.6.9 (sftp://sdn@172.16.50.3:6003/usr/bin/python3)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.9" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">

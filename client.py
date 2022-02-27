@@ -1,17 +1,16 @@
 import argparse
 import sys
+import time
 
 import torch
 import torch.optim as optim
-# from pulp import *
-from torch.utils.tensorboard import SummaryWriter
 from threading import Thread
 
 from config import ClientConfig
 from utils import models, datasets
 from utils.DataManager import DataManager
 from utils.comm_utils import *
-from utils.file_utils import write_tensor_to_file
+from utils.FileOperation import write_tensor_to_file
 from utils.training_utils import train, test
 
 parser = argparse.ArgumentParser(description='Distributed Client')
@@ -34,7 +33,7 @@ parser.add_argument('--step_size', type=float, default=1.0)
 parser.add_argument('--decay_rate', type=float, default=0.97)
 parser.add_argument('--weight_decay', type=float, default=0.0)
 parser.add_argument('--epoch', type=int, default=5)
-parser.add_argument('--local_iters', type=int, default=-1)
+parser.add_argument('--local_iters', type=int, default=50)
 parser.add_argument('--use_cuda', action="store_false", default=True)
 parser.add_argument('--adaptive', action="store_false", default=False)
 parser.add_argument('--visible_cuda', type=str, default='-1')
@@ -56,7 +55,7 @@ def write_tensor(filename, tensor):
 
 def main():
     client_config = ClientConfig()
-    recorder = SummaryWriter("log_" + str(client_config.idx))
+    # recorder = SummaryWriter("log_" + str(client_config.idx))
     write_t = None
     # receive config
     print(str(args.client_ip), str(args.master_port))
@@ -79,8 +78,6 @@ def main():
     local_model.to(device)
     para_nums = torch.nn.utils.parameters_to_vector(local_model.parameters()).nelement()
     print("Len of tensor: {}".format(para_nums))
-    print(args.batch_size, args.ratio)
-    print(len(client_config.custom["train_data_idxes"]))
     train_dataset, test_dataset = datasets.load_datasets(args.dataset)
     train_loader = datasets.create_dataloaders(train_dataset, batch_size=args.batch_size,
                                                selected_idxs=client_config.custom["train_data_idxes"])
@@ -91,55 +88,47 @@ def main():
     epoch_lr = args.lr
     local_steps, compre_ratio = 50, 1
 
-    # data_manager = DataManager(src_ip=args.client_nic_ip,
-    #                            dst_ip=args.master_nic_ip,
-    #                            interface='eno5',
-    #                            thread_num=8)
+    data_manager = DataManager(src_ip=args.client_nic_ip,
+                               dst_ip=args.master_nic_ip,
+                               interface='eno6',
+                               thread_num=8)
 
     for epoch in range(1, 1 + args.epoch):
         epoch_lr = max((args.decay_rate * epoch_lr, args.min_lr))
         print("model-{}-epoch-{} lr: {}, ratio: {} ".
               format(args.model, epoch, epoch_lr, args.ratio))
-        start_time = time.time()
         optimizer = optim.SGD(local_model.parameters(), lr=epoch_lr, weight_decay=args.weight_decay)
         train_loss = train(local_model, train_loader, optimizer, local_iters=local_steps, device=device,
                            model_type=args.model)
         local_para = torch.nn.utils.parameters_to_vector(local_model.parameters()).clone().detach()
-        train_time = time.time() - start_time
-        print("train time: ", train_time)
 
-        if args.write_to_file and epoch == 1:
-            write_t = write_tensor("data/log/tensor/model_{}_epoch_{}_worker_{}".
-                                   format(args.model, epoch, args.idx), local_para)
+        # if args.write_to_file == True and epoch == 1:
+        #     write_t = write_tensor("data/log/tensor/model_{}_epoch_{}_worker_{}".
+        #                            format(args.model, epoch, args.idx), local_para)
 
         test_loss, acc = test(local_model, test_loader, device, model_type=args.model)
-        recorder.add_scalar('acc_worker-' + str(args.idx), acc, epoch)
-        recorder.add_scalar('test_loss_worker-' + str(args.idx), test_loss, epoch)
-        recorder.add_scalar('train_loss_worker-' + str(args.idx), train_loss, epoch)
         print("after aggregation, epoch: {}, train loss: {}, test loss: {}, test accuracy: {}".format(epoch, train_loss,
                                                                                                       test_loss, acc))
         print("send para")
-        start_time = time.time()
-        print(len(local_para))
-        # data_manager.update_data(local_para.detach().tolist())
-        # data_manager.fast_send_data(int(args.idx), 1, 2, 100000)
+        data_manager.update_data(local_para.detach().tolist())
+        data_manager.fast_send_data(int(args.idx), 1, 2, 100000)
         send_data_socket(local_para.cpu(), master_socket)
-        send_time = time.time() - start_time
-        print("Total time: ", send_time)
-
         print("get begin")
-        if device=='cuda':
+
+        if torch.cuda.is_available():
             local_para = get_data_socket(master_socket).cuda()
         else:
             local_para = get_data_socket(master_socket)
+
         print("get end")
         local_para.to(device)
         torch.nn.utils.vector_to_parameters(local_para, local_model.parameters())
 
+    # f.close()
     master_socket.shutdown(2)
     master_socket.close()
-    if write_t is not None:
-        write_t.join()
+    # if write_t is not None:
+    #     write_t.join()
     sys.exit(0)
 
 

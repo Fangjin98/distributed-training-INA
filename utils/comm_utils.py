@@ -4,10 +4,13 @@ import struct
 import socket
 import pickle
 import threading
+from multiprocessing import Process
 from time import sleep
 import time
 
-from header_config import DATA_NUM, DATA_BYTE
+import paramiko
+
+from header_config import DATA_NUM, DATA_BYTE, HEADER_BYTE
 
 
 def is_port_in_use(port):
@@ -65,18 +68,16 @@ def get_data_socket(conn):
     return recv_data
 
 
-def get_data_from_nic(s, buffer, nic_ip=None):
-    if nic_ip:
-        print("Get data from nic {}...".format(nic_ip))
+def get_data_from_nic(s, buffer):
     while True:
-        raw_data = s.recvfrom(DATA_NUM + DATA_BYTE)[0]
+        raw_data = s.recvfrom(HEADER_BYTE + DATA_BYTE)[0]
         buffer.append(raw_data)
 
 
 def float_to_int(num_list):
     if num_list is None:
         return
-    scale_factor = 10000
+    scale_factor = 100000000
     res = []
     for num in num_list:
         res.append(int(num * scale_factor).to_bytes(4, byteorder='little', signed=True))
@@ -84,7 +85,7 @@ def float_to_int(num_list):
 
 
 def int_to_float(num_list):
-    scale_factor = 10000.0
+    scale_factor = 100000000.0
     res = []
     for num in num_list:
         res.append(float(num / scale_factor))
@@ -104,3 +105,45 @@ class RecvThread(threading.Thread):
     def get_result(self):
         threading.Thread.join(self)
         return self.result
+
+
+class RecvProcess(Process):
+    def __init__(self, func, args=()):
+        super(RecvProcess, self).__init__()
+        self.func = func
+        self.args = args
+        self.result = None
+
+    def run(self):
+        self.result = self.func(*self.args)
+
+    def get_result(self):
+        Process.join(self)
+        return self.result
+
+
+def start_remote_process(ssh_ip, ssh_port, user, pwd, cmd):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        ssh.connect(hostname=ssh_ip, port=int(ssh_port),
+                    username=user, password=pwd)
+    except Exception as e:
+        print("SSH FAILED: {}".format(ssh_ip))
+        print(e)
+        ssh.close()
+    else:
+        print("Execute cmd.")
+        print(cmd)
+        stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
+        stdin.write(str(pwd) + '\n')
+        output = []
+        out = stdout.read()
+        error = stderr.read()
+        if out:
+            print('[%s] OUT:\n%s' % (ssh_ip, out.decode('utf8')))
+            output.append(out.decode('utf-8'))
+        if error:
+            print('ERROR:[%s]\n%s' % (ssh_ip, error.decode('utf8')))
+            output.append(ssh_ip + ' ' + error.decode('utf-8'))
+        print(output)

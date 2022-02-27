@@ -2,22 +2,16 @@ import argparse
 import asyncio
 import concurrent.futures
 import json
-import random
-from functools import singledispatch
-from re import L
 import numpy as np
 import torch
 from config import *
-from header_config import NGA_TYPE
-from utils.comm_utils import *
 from utils import datasets, models
 from utils.training_utils import test
 from utils.NGAPacket import *
 from utils.comm_utils import *
 
-# init parameters
-parser = argparse.ArgumentParser(description='Distributed Client')
-parser.add_argument('--model', type=str, default='resnet50')
+parser = argparse.ArgumentParser(description='Distributed Server')
+parser.add_argument('--model', type=str, default='alexnet')
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--data_pattern', type=int, default=0)
 parser.add_argument('--weight_decay', type=float, default=0.0)
@@ -34,17 +28,17 @@ parser.add_argument('--worker_num', type=int, default=8)
 parser.add_argument('--use_cuda', action="store_false", default=True)
 parser.add_argument('--ip', type=str, default='127.0.0.1')
 parser.add_argument('--nic_ip', type=str, default='127.0.0.1')
-parser.add_argument('--write_to_file',  default=False)
+parser.add_argument('--write_to_file', default=False)
 args = parser.parse_args()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 device = torch.device("cuda" if args.use_cuda and torch.cuda.is_available() else "cpu")
 
+
 def main():
     offset = random.randint(0, 20) * 20
     print(offset)
-    config_file="local_worker_config.json"
-
+    config_file = "worker_config.json"
     common_config = CommonConfig('CIFAR10',
                                  args.model,
                                  args.epoch,
@@ -56,13 +50,12 @@ def main():
                                  args.algorithm,
                                  write_to_file=args.write_to_file,
                                  use_cuda=args.use_cuda,
-                                 master_listen_port_base=53300+offset
+                                 master_listen_port_base=53300 + offset
                                  )
 
     with open(config_file) as json_file:
         workers_config = json.load(json_file)
 
-    # global_model = models.create_model_instance(common_config.dataset, common_config.model)
     global_model = models.get_model(common_config.model)
     init_para = torch.nn.utils.parameters_to_vector(global_model.parameters())
     para_nums = torch.nn.utils.parameters_to_vector(global_model.parameters()).nelement()
@@ -98,13 +91,13 @@ def main():
 
     train_data_partition, test_data_partition = partition_data(common_config.dataset, args.data_pattern, worker_num)
 
-    # nic_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, NGA_TYPE)
-    # nic_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 10240000)
-    # print("Recv buff: {}".format(nic_socket.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)))
-    # nic_socket.bind((args.nic_ip, 0))
-    # updated_para = []
-    # recv_thread = RecvThread(func=get_data_from_nic, args=(nic_socket, updated_para, args.nic_ip))
-    # recv_thread.start()
+    nic_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, NGA_TYPE)
+    nic_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 20480000)
+    print("Recv buff: {}".format(nic_socket.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)))
+    nic_socket.bind((args.nic_ip, 0))
+    updated_para = []
+    recv_thread = RecvThread(func=get_data_from_nic, args=(nic_socket, updated_para, args.nic_ip))
+    recv_thread.start()
 
     for worker_idx, worker in enumerate(worker_list):
         worker.config.para = init_para
@@ -125,14 +118,15 @@ def main():
     test_loader = datasets.create_dataloaders(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     total_time = 0.0
-
+    epoch_time = []
     for epoch_idx in range(1, 1 + common_config.epoch):
+        start_time = time.time()
         print("get begin")
         communication_parallel(worker_list, action="get_model")
         print("get end")
         global_para = torch.nn.utils.parameters_to_vector(global_model.parameters()).clone().detach()
-        # tmp_para = aggregate_model_from_nic(global_para, updated_para, args.step_size, worker_num)
-        # updated_para.clear()
+        aggregate_model_from_nic(global_para, updated_para, args.step_size, worker_num)
+        updated_para.clear()
         global_para = aggregate_model(global_para, worker_list, args.step_size)
 
         print("send begin")
@@ -142,11 +136,14 @@ def main():
 
         torch.nn.utils.vector_to_parameters(global_para, global_model.parameters())
         test_loss, acc = test(global_model, test_loader, device, model_type=args.model)
-        common_config.recoder.add_scalar('Accuracy/average', acc, epoch_idx)
-        common_config.recoder.add_scalar('Test_loss/average', test_loss, epoch_idx)
+        end_time = time.time() - start_time
+        epoch_time.append(end_time)
         print("Epoch: {}, accuracy: {}, test_loss: {}\n".format(epoch_idx, acc, test_loss))
-        common_config.recoder.add_scalar('Accuracy/average_time', acc, total_time)
-        common_config.recoder.add_scalar('Test_loss/average_time', test_loss, total_time)
+        print("epoch time: {}".format(str(end_time)))
+
+    with open('epoch_time_worker_{}_model_{}'.format(args.worker_num, args.model), 'w') as f:
+        for t_time in epoch_time:
+            f.write(str(t_time) + ' ')
 
     for worker in worker_list:
         worker.socket.shutdown(2)
@@ -157,44 +154,36 @@ def aggregate_model(local_para, worker_list, step_size):
         para_delta = torch.zeros_like(local_para)
         average_weight = 1.0 / (len(worker_list) + 1)
         for worker in worker_list:
-            model_delta = (worker.config.neighbor_paras - local_para)
-            para_delta += step_size * average_weight * model_delta
+            model_delta = worker.config.neighbor_paras - local_para
+            para_delta += average_weight * step_size * model_delta
 
         local_para += para_delta
 
     return local_para
 
 
-def get_nic_data(recv_data):
-    sequence_payload = []
+def get_nic_data(recv_data, length):
+    sequence_payload = [0.0 for i in range(length)]
     count = 0
     for raw_data in recv_data:
         nga_header = NGAHeader(raw_data[:HEADER_BYTE])
-        if nga_header.sequenceid == -1:
-            continue
-        nga_payload = NGAPayload(raw_data[HEADER_BYTE:])
+        nga_payload = NGAPayload(raw_data[HEADER_BYTE - 1:])
         count += len(nga_payload.data)
-        sequence_payload.append((nga_header.sequenceid, nga_payload.data))
-    print("Len of data from nic: {}.".format(count))
+        for i in range(DATA_NUM):
+            if nga_header.sequenceid * DATA_NUM + i >= length:
+                break
+            sequence_payload[nga_header.sequenceid * DATA_NUM + i] += nga_payload.data[i]
+    # print("Len of data from nic: {}.".format(count))
     return sequence_payload
 
 
 def aggregate_model_from_nic(local_para, recv_data, step_size, worker_num):
-    header_payload = get_nic_data(recv_data)
-    updated_para = [0.0 for i in range(len(local_para))]
-    count=0
-    for hp in header_payload:
-        for i in range(DATA_NUM):
-            if hp[0] * DATA_NUM + i == len(local_para):
-                break
-            updated_para[hp[0] * DATA_NUM + i] += hp[1][i]
-            count+=1
-    updated_para = torch.Tensor(updated_para)
-    print(count)
-
-    with torch.no_grad():
-        delta = (updated_para - local_para)
-        local_para += ((step_size * delta) / (worker_num + 1))
+    payload = get_nic_data(recv_data, len(local_para))
+    # updated_para = torch.Tensor(payload)
+    # average_weight = 1.0 / (worker_num + 1)
+    # with torch.no_grad():
+    #     delta = (local_para - updated_para)
+    #     local_para += (step_size * delta * average_weight)
 
     return local_para
 
@@ -220,12 +209,12 @@ def communication_parallel(worker_list, action, data=None):
 
 
 def get_compressed_model_top(config, socket, nelement):
-    print('Get compressed model')
     try:
         received_para = get_data_socket(socket)
     except Exception as e:
         print("FAILED: get model error.")
         print(e)
+        sys.exit(1)
     else:
         received_para.to(device)
         config.neighbor_paras = received_para
