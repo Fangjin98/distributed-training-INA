@@ -1,30 +1,36 @@
-from typing import List
 from routing.algs.ATP import ATP
 from routing.utils.TopoGenerator import TopoGenerator
 
 
 class SwitchML(ATP):
-    def __init__(self, topo: TopoGenerator,test_set, **kwargs) -> None:
-        super().__init__(topo,test_set,**kwargs)
-        
-    def run(self):
-        tor_switch_set=self._get_tor_switch()
-        candidate_paths=self._get_candidate_path()
-        
-        aggregation_node=dict()
-        routing_paths=[]
-        
-        for w in self.flatten_worker_set:
-            aggregation_node[w]=tor_switch_set[w]
-            routing_paths.append(
-                self._choose_path(candidate_paths[w][tor_switch_set[w]])
-            )
-        
-        for s in self.switch_set:
-            routing_paths.append(
-                self._choose_path(candidate_paths[s][self.ps])
-            )
-        
-        return aggregation_node, routing_paths
-    
-    
+    def __init__(self, topo: TopoGenerator) -> None:
+        super().__init__(topo)
+
+    def run(self, test_set, comp, band, **kwargs):
+        ps = test_set[0]
+        worker_set = test_set[1]
+        switch_set = test_set[2]
+        flatten_worker_set = []
+
+        for ww in worker_set:
+            for w in ww:
+                flatten_worker_set.append(w)
+
+        tor_switch_set = self._get_tor_switch(ps, worker_set, switch_set)
+
+        aggregation_node = dict()
+        rate = dict()
+        count = {s: 0 for s in switch_set}
+        max_rate = band / len(switch_set)
+
+        for w in flatten_worker_set:
+            aggregation_node[w] = tor_switch_set[w]
+            count[tor_switch_set[w]] += 1
+
+        for index, s in enumerate(switch_set):
+            tmp_rate = max(max_rate, comp[index] / count)
+            for w in flatten_worker_set:
+                if aggregation_node[w] == s:
+                    rate[w] = tmp_rate
+
+        return aggregation_node, rate

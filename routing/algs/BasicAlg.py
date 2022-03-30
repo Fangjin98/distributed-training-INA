@@ -4,9 +4,8 @@ from routing.utils.TopoGenerator import TopoGenerator
 
 class BasicAlg(ABC):
     def __init__(self, topo: TopoGenerator) -> None:
-        self.topo=topo
+        self.topo = topo
 
     @abstractmethod
-    def run(self):
+    def run(self, test_set, comp, band):
         pass
-                    
