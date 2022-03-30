@@ -196,7 +196,7 @@ class AccPlotter(BasicPlotter):
 
         for alg in self.algs:
             ax.plot(x_edges[alg], y_values[alg], self.color[alg], label=alg,
-                    marker=self.marker[alg], markersize=20, markerfacecolor='none',
+                    marker=self.marker[alg], markersize=10, markerfacecolor='none',
                     linestyle=self.linestyle[alg], linewidth=3)
 
         self.legend = ax.legend(frameon=False, prop=self.legend_font,

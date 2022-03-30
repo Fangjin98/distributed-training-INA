@@ -1,7 +1,6 @@
 from collections import defaultdict
 from collections import deque
 import json
-import cplex
 import pulp as pl
 import numpy as np
 
