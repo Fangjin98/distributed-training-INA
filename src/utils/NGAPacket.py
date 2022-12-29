@@ -1,7 +1,7 @@
 import struct
 from ctypes import Structure, c_ubyte, c_ushort, c_uint, c_byte, c_int
 from scapy.all import *
-from header_config import *
+from src.comm_libs.header_config import *
 from utils.comm_utils import int_to_float
 
 

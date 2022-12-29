@@ -10,7 +10,7 @@ import time
 
 import paramiko
 
-from header_config import DATA_NUM, DATA_BYTE, HEADER_BYTE
+from src.comm_libs.header_config import DATA_NUM, DATA_BYTE, HEADER_BYTE
 
 
 def is_port_in_use(port):
