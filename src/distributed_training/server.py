@@ -4,7 +4,7 @@ import concurrent.futures
 import json
 import numpy as np
 import torch
-from src.config import *
+from src.distributed_training.config import *
 from utils import datasets, models
 from utils.training_utils import test
 from utils.NGAPacket import *

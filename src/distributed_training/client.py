@@ -6,7 +6,7 @@ import torch
 import torch.optim as optim
 from threading import Thread
 
-from src.config import ClientConfig
+from src.distributed_training.config import ClientConfig
 from utils import models, datasets
 from utils.DataManager import DataManager
 from utils.comm_utils import *
