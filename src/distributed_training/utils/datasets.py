@@ -8,7 +8,6 @@ CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
 
 
 class Partition(object):
-
     def __init__(self, data, index):
         self.data = data
         self.index = index
@@ -37,7 +36,6 @@ class DataLoaderHelper(object):
 
 
 class RandomPartitioner(object):
-
     def __init__(self, data, partition_sizes, seed=2021):
         self.data = data
         self.partitions = []
@@ -63,7 +61,6 @@ class RandomPartitioner(object):
 
 
 class LabelwisePartitioner(object):
-
     def __init__(self, data, partition_sizes, seed=2021):
         # sizes is a class_num * vm_num matrix
         self.data = data
@@ -109,7 +106,7 @@ def create_dataloaders(dataset, batch_size, selected_idxs=None, shuffle=True, pi
     return DataLoaderHelper(dataloader)
 
 
-def load_datasets(dataset_type, data_path=CURRENT_PATH+'/../data/datasets'):
+def load_datasets(dataset_type, data_path):
     train_transform = load_default_transform(dataset_type, train=True)
     test_transform = load_default_transform(dataset_type, train=False)
     train_dataset = None
@@ -120,28 +117,18 @@ def load_datasets(dataset_type, data_path=CURRENT_PATH+'/../data/datasets'):
                                          download=True, transform=train_transform)
         test_dataset = datasets.CIFAR10(data_path, train=False,
                                         download=True, transform=test_transform)
-
     elif dataset_type == 'CIFAR100':
         train_dataset = datasets.CIFAR100(data_path, train=True,
                                           download=True, transform=train_transform)
         test_dataset = datasets.CIFAR100(data_path, train=False,
                                          download=True, transform=test_transform)
-
-    elif dataset_type == 'FashionMNIST':
-        train_dataset = datasets.FashionMNIST(data_path, train=True,
-                                              download=True, transform=train_transform)
-        test_dataset = datasets.FashionMNIST(data_path, train=False,
-                                             download=True, transform=test_transform)
-
-    elif dataset_type == 'MNIST':
-        train_dataset = datasets.MNIST(data_path, train=True,
-                                       download=True, transform=train_transform)
-        test_dataset = datasets.MNIST(data_path, train=False,
-                                      download=True, transform=test_transform)
+    else:
+        raise ValueError("No such dataset!\n")
+    
     return train_dataset, test_dataset
 
 
-def load_default_transform(dataset_type, train=False):
+def load_default_transform(dataset_type, train):
     if dataset_type == 'CIFAR10':
         normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
                                          std=[0.2023, 0.1994, 0.2010])
@@ -163,18 +150,23 @@ def load_default_transform(dataset_type, train=False):
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-
-    elif dataset_type == 'FashionMNIST':
-        dataset_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ])
-
-    elif dataset_type == 'MNIST':
-        dataset_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ])
+    else:
+        raise ValueError("No such dataset!\n")
 
     return dataset_transform
+    
+def partition_data(dataset_name, worker_num, train_dataset, test_dataset):
+    if dataset_name == "CIFAR100":
+        test_partition_sizes = np.ones((100, worker_num)) * (1 / worker_num)
+        partition_sizes = np.ones((100, worker_num)) * (1 / (worker_num))
+    elif dataset_name == "CIFAR10":
+        test_partition_sizes = np.ones((10, worker_num)) * (1 / worker_num)
+        partition_sizes = np.ones((10, worker_num)) * (1 / worker_num)
+    else:
+         raise ValueError("No such dataset! \n")
+    
+    train_data_partition = LabelwisePartitioner(train_dataset, partition_sizes)
+    test_data_partition = LabelwisePartitioner(test_dataset, test_partition_sizes)
+
+    return train_data_partition, test_data_partition
 

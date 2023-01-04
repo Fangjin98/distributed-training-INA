@@ -7,6 +7,28 @@ import torchvision.models as m
 
 CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
 
+def get_model(model_name, download=False):
+    """
+    :param model_name: alexnet vgg16 resnet50 resnet101 resnet152
+    :return: model instance
+    """
+    model = None
+
+    if model_name == 'resnet50':
+        model = m.resnet50()
+    elif model_name == 'vgg16':
+        model = m.vgg16()
+    elif model_name == 'alexnet':
+        model = m_AlexNet()
+    elif model_name == 'resnet101':
+        model = m.resnet101()
+    elif model_name == 'resnet152':
+        model = m.resnet152()
+    else:
+        raise ValueError("No such model!\n")
+
+    model.eval()
+    return model
 
 class m_AlexNet(nn.Module):
     def __init__(self):
@@ -39,26 +61,3 @@ class m_AlexNet(nn.Module):
         x = x.view(-1, 256 * 2 * 2)
         x = self.classifier(x)
         return F.log_softmax(x, dim=1)
-
-
-def get_model(model_name, download=False):
-    """
-    :param model_name: alexnet vgg11 vgg16 vgg19 resnet50 resnet101 resnet152
-    :return: model instance
-    """
-    model = None
-
-    if model_name == 'resnet50':
-        model = m.resnet50(pretrained=True)
-    elif model_name == 'vgg16':
-        model = m.vgg16(pretrained=True)
-    elif model_name == 'alexnet':
-        model = m_AlexNet()
-    elif model_name == 'resnet101':
-        model = m.resnet101(pretrained=True)
-    elif model_name == 'resnet152':
-        model = m.resnet152(pretrained=True)
-
-    if model is not None:
-        model.eval()
-    return model
