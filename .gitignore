@@ -1,6 +1,7 @@
 .idea/
 .vscode/
 __pycache__/
+.DS_Store
 
 log*/
 runs/
@@ -10,5 +11,4 @@ data/log/tensor/model*
 data/models/
 data/datasets/
 
-routing/scripts/
 scripts/
