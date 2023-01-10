@@ -10,5 +10,3 @@ runs/
 data/log/tensor/model*
 data/models/
 data/datasets/
-
-scripts/
