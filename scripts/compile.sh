@@ -1,1 +1,0 @@
-g++ -pthread -shared -O3 -fPIC -std=c++11 -o send.so src/common/communicator.cc 

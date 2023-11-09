@@ -3,7 +3,6 @@ import pickle
 import socket
 import struct
 import time
-import paramiko
 from time import sleep
 from threading import Thread
 
@@ -85,6 +84,7 @@ class Worker:
             sleep(0.5)
 
     def _launch_remote_process(self):
+        import paramiko
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 

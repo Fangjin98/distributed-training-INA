@@ -7,6 +7,6 @@ log*/
 runs/
 *.log
 
-data/log/tensor/model*
-data/models/
-data/datasets/
+scripts/
+data/
+config/

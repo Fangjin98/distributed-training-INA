@@ -12,7 +12,7 @@ import os
 from utils import datasets
 from utils import models
 from utils import worker
-from common.utils import get_data, bind_port, send_timestamp_data
+from utils.trans import get_data, bind_port, send_timestamp_data
 
 parser = argparse.ArgumentParser(description="Asynchronous Distributed Training")
 parser.add_argument("--idx", type=int, default=0)
@@ -123,7 +123,7 @@ def communication_parallel(
 ):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    pool = concurrent.futures.ProcessPoolExecutor(
+    pool = concurrent.futures.ThreadPoolExecutor(
         max_workers=len(worker_list),
     )
     tasks = []
@@ -163,7 +163,7 @@ def master_loop(
         exit(1)
 
     try:
-        train_dataset, test_dataset = datasets.load_dataset(dataset, DATASET_PATH)
+        train_dataset, test_dataset = datasets.load_datasets(dataset, DATASET_PATH)
     except TypeError as t:
         print(t)
         exit(1)
